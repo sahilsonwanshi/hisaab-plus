@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+import '../models/friend_model.dart';
 import '../widgets/custom_toast.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -9,7 +12,12 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
+  // Page memory me cached rahegi, switch karte waqt destroy nahi hogi
+  @override
+  bool get wantKeepAlive => true;
+
   // OLED Luxury Dark Theme Palette
   static const Color oledBg = Color(0xFF000000);
   static const Color cardSurface = Color(0xFF141416);
@@ -21,21 +29,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color borderCustom = Color(0xFF222226);
 
   bool _isNotificationsEnabled = true;
-  bool _isDevCardExpanded = false; // Contact details toggle state
+  bool _isDevCardExpanded = false;
+
+  late Box<FriendModel> _friendsBox;
+
+  @override
+  void initState() {
+    super.initState();
+    _friendsBox = Hive.box<FriendModel>('friends_box');
+  }
+
+  Future<void> _onRefresh() async {
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin ke liye zaroori
+
     return Scaffold(
       backgroundColor: oledBg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. User Profile Header Card
-              Container(
+        child: Column(
+          children: [
+            // =========================================================
+            // 1. FIXED STICKY TOP PROFILE HEADER (Freeze on pull/scroll)
+            // =========================================================
+            Container(
+              color: oledBg,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: cardSurface,
@@ -63,10 +87,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             "Sahil Sonwanshi",
                             style: TextStyle(
@@ -95,530 +119,622 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+            ),
 
-              const SizedBox(height: 14),
+            // =========================================================
+            // 2. SCROLLABLE BODY WITH REFRESH INDICATOR
+            // =========================================================
+            Expanded(
+              child: ValueListenableBuilder<Box<FriendModel>>(
+                valueListenable: _friendsBox.listenable(),
+                builder: (context, box, _) {
+                  int totalLena = 0;
+                  int totalDena = 0;
+                  int activeDostCount = 0;
+                  int chuktaKhataCount = 0;
 
-              // 2. Financial Overview Cards (Lena / Dena)
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardSurface,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: borderCustom),
+                  for (var friend in box.values) {
+                    if (friend.type == 'lena' && friend.balance > 0) {
+                      totalLena += friend.balance;
+                      activeDostCount++;
+                    } else if (friend.type == 'dena' && friend.balance > 0) {
+                      totalDena += friend.balance;
+                      activeDostCount++;
+                    } else {
+                      chuktaKhataCount++;
+                    }
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    color: greenAccent,
+                    backgroundColor: cardSurfaceLight,
+                    displacement: 20,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
                       ),
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Financial Overview Cards (Lena / Dena Connected to Hive)
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text(
-                                "Lena Hai",
-                                style: TextStyle(
-                                  color: textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_downward_rounded,
-                                color: greenAccent,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "₹1,250",
-                            style: TextStyle(
-                              color: greenAccent,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            "Net Receivable",
-                            style: TextStyle(
-                              color: textMutedDark,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardSurface,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: borderCustom),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text(
-                                "Dena Hai",
-                                style: TextStyle(
-                                  color: textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_upward_rounded,
-                                color: redAccent,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "₹450",
-                            style: TextStyle(
-                              color: redAccent,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            "Net Payable",
-                            style: TextStyle(
-                              color: textMutedDark,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 14),
-
-              // 3. Mini Activity Counters
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: cardSurface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: borderCustom),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                      "Active Dost",
-                      "4",
-                      Icons.people_outline_rounded,
-                    ),
-                    Container(width: 1, height: 26, color: borderCustom),
-                    _buildStatItem(
-                      "Chukta Khata",
-                      "12",
-                      Icons.done_all_rounded,
-                    ),
-                    Container(width: 1, height: 26, color: borderCustom),
-                    _buildStatItem(
-                      "App Health",
-                      "100%",
-                      Icons.security_rounded,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // 4. Google Drive Cloud Sync Card
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: cardSurface,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: borderCustom),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0F2618),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.cloud_done_rounded,
-                          color: greenAccent,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "Google Drive Backup",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            "COMING SOON: Auto backup & restore from Google Drive",
-                            style: TextStyle(color: textMuted, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        AppToast.show(
-                          context,
-                          title: "Google Drive synced!",
-                          type: ToastType.success,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(
-                            Icons.sync_rounded,
-                            size: 14,
-                            color: Colors.black,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            "Sync",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // 5. HISAAB PREFERENCES (Biometric Lock Removed)
-              const Text(
-                "HISAAB PREFERENCES",
-                style: TextStyle(
-                  color: textMutedDark,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: cardSurface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: borderCustom),
-                ),
-                child: Column(
-                  children: [
-                    _buildActionTile(
-                      icon: Icons.description_outlined,
-                      title: "PDF Statement",
-                      subtitle:
-                          "COMING SOON: Generate & share PDF of your Khata",
-                      trailing: const Icon(
-                        Icons.download_rounded,
-                        color: textMuted,
-                        size: 18,
-                      ),
-                      onTap: () {
-                        AppToast.show(
-                          context,
-                          title: "PDF generation coming soon!",
-                          type: ToastType.info,
-                        );
-                      },
-                    ),
-                    const Divider(height: 1, color: borderCustom, indent: 56),
-                    _buildActionTile(
-                      icon: Icons.translate_rounded,
-                      title: "Language",
-                      subtitle: "feature coming soon: Switch app language",
-                      trailing: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: textMuted,
-                        size: 20,
-                      ),
-                      onTap: () {},
-                    ),
-                    const Divider(height: 1, color: borderCustom, indent: 56),
-                    _buildSwitchTile(
-                      icon: Icons.notifications_none_rounded,
-                      title: "Payment Reminders",
-                      subtitle: "Daily auto settle alerts",
-                      value: _isNotificationsEnabled,
-                      onChanged: (val) {
-                        setState(() => _isNotificationsEnabled = val);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // 6. DATA & SYSTEM CONTROLS
-              const Text(
-                "DATA & SYSTEM",
-                style: TextStyle(
-                  color: textMutedDark,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: cardSurface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: borderCustom),
-                ),
-                child: Column(
-                  children: [
-                    _buildActionTile(
-                      icon: Icons.cleaning_services_rounded,
-                      title: "Clear Cache",
-                      subtitle: "Free up storage without deleting data",
-                      trailing: const Text(
-                        "12.4 MB",
-                        style: TextStyle(color: textMuted, fontSize: 11.5),
-                      ),
-                      onTap: () {
-                        AppToast.show(
-                          context,
-                          title: "Cache cleaned successfully!",
-                          type: ToastType.success,
-                        );
-                      },
-                    ),
-                    const Divider(height: 1, color: borderCustom, indent: 56),
-                    _buildActionTile(
-                      icon: Icons.delete_outline_rounded,
-                      title: "Reset Local Ledger",
-                      subtitle: "Erase offline entries from this phone",
-                      iconColor: redAccent,
-                      trailing: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: textMuted,
-                        size: 20,
-                      ),
-                      onTap: () {
-                        AppToast.show(
-                          context,
-                          title: "Hold to reset data!",
-                          type: ToastType.warning,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // 7. DEVELOPER & APP INFO CARD WITH EXPANDABLE CONTACT DETAILS
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: cardSurface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: _isDevCardExpanded
-                        ? greenAccent.withOpacity(0.3)
-                        : borderCustom,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // Header Row with Title, Version & Expand Button
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _isDevCardExpanded = !_isDevCardExpanded;
-                        });
-                      },
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: cardSurfaceLight,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: borderCustom),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.code_rounded,
-                                color: greenAccent,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Text(
-                                      "HISAAB",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.1,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: cardSurface,
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(color: borderCustom),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "Lena Hai",
+                                            style: TextStyle(
+                                              color: textMuted,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_downward_rounded,
+                                            color: greenAccent,
+                                            size: 16,
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    const Text(
-                                      "+",
-                                      style: TextStyle(
-                                        color: greenAccent,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1B2A1E),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: greenAccent.withOpacity(0.3),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "₹$totalLena",
+                                        style: const TextStyle(
+                                          color: greenAccent,
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w900,
                                         ),
                                       ),
-                                      child: const Text(
-                                        "v4.3.0",
+                                      const SizedBox(height: 2),
+                                      const Text(
+                                        "Net Receivable",
                                         style: TextStyle(
-                                          color: greenAccent,
+                                          color: textMutedDark,
                                           fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: cardSurface,
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(color: borderCustom),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "Dena Hai",
+                                            style: TextStyle(
+                                              color: textMuted,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_upward_rounded,
+                                            color: redAccent,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "₹$totalDena",
+                                        style: const TextStyle(
+                                          color: redAccent,
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      const Text(
+                                        "Net Payable",
+                                        style: TextStyle(
+                                          color: textMutedDark,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Mini Activity Counters
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cardSurface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: borderCustom),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStatItem(
+                                  "Active Dost",
+                                  "$activeDostCount",
+                                  Icons.people_outline_rounded,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 26,
+                                  color: borderCustom,
+                                ),
+                                _buildStatItem(
+                                  "Chukta Khata",
+                                  "$chuktaKhataCount",
+                                  Icons.done_all_rounded,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 26,
+                                  color: borderCustom,
+                                ),
+                                _buildStatItem(
+                                  "App Health",
+                                  "100%",
+                                  Icons.security_rounded,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Google Drive Cloud Sync Card
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cardSurface,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: borderCustom),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF0F2618),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.cloud_done_rounded,
+                                      color: greenAccent,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Google Drive Backup",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        "COMING SOON: Auto backup & restore from Google Drive",
+                                        style: TextStyle(
+                                          color: textMuted,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    AppToast.show(
+                                      context,
+                                      title: "Local database sync safe hai!",
+                                      type: ToastType.success,
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.sync_rounded,
+                                        size: 14,
+                                        color: Colors.black,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        "Sync",
+                                        style: TextStyle(
+                                          fontSize: 11.5,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                const Text(
-                                  "Developed by Sahil Sonwanshi",
-                                  style: TextStyle(
-                                    color: textMuted,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w500,
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          // Expand / Collapse Chevron Button
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: cardSurfaceLight,
-                              shape: BoxShape.circle,
+
+                          const SizedBox(height: 22),
+
+                          // HISAAB PREFERENCES
+                          const Text(
+                            "HISAAB PREFERENCES",
+                            style: TextStyle(
+                              color: textMutedDark,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
                             ),
-                            child: AnimatedRotation(
-                              turns: _isDevCardExpanded ? 0.5 : 0.0,
-                              duration: const Duration(milliseconds: 250),
-                              child: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: textMuted,
-                                size: 18,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Container(
+                            decoration: BoxDecoration(
+                              color: cardSurface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: borderCustom),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildActionTile(
+                                  icon: Icons.description_outlined,
+                                  title: "PDF Statement",
+                                  subtitle: "COMING SOON: Generate & share PDF of your Khata",
+                                  trailing: const Icon(
+                                    Icons.download_rounded,
+                                    color: textMuted,
+                                    size: 18,
+                                  ),
+                                  onTap: () {
+                                    AppToast.show(
+                                      context,
+                                      title: "PDF generation coming soon!",
+                                      type: ToastType.info,
+                                    );
+                                  },
+                                ),
+                                const Divider(
+                                  height: 1,
+                                  color: borderCustom,
+                                  indent: 56,
+                                ),
+                                _buildActionTile(
+                                  icon: Icons.translate_rounded,
+                                  title: "Language",
+                                  subtitle: "feature coming soon: Switch app language",
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: textMuted,
+                                    size: 20,
+                                  ),
+                                  onTap: () {},
+                                ),
+                                const Divider(
+                                  height: 1,
+                                  color: borderCustom,
+                                  indent: 56,
+                                ),
+                                _buildSwitchTile(
+                                  icon: Icons.notifications_none_rounded,
+                                  title: "Payment Reminders",
+                                  subtitle: "Daily auto settle alerts",
+                                  value: _isNotificationsEnabled,
+                                  onChanged: (val) {
+                                    setState(
+                                      () => _isNotificationsEnabled = val,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 22),
+
+                          // DATA & SYSTEM CONTROLS
+                          const Text(
+                            "DATA & SYSTEM",
+                            style: TextStyle(
+                              color: textMutedDark,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Container(
+                            decoration: BoxDecoration(
+                              color: cardSurface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: borderCustom),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildActionTile(
+                                  icon: Icons.cleaning_services_rounded,
+                                  title: "Clear Cache",
+                                  subtitle:
+                                      "Free up storage without deleting data",
+                                  trailing: const Text(
+                                    "12.4 MB",
+                                    style: TextStyle(
+                                      color: textMuted,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    AppToast.show(
+                                      context,
+                                      title: "Cache cleaned successfully!",
+                                      type: ToastType.success,
+                                    );
+                                  },
+                                ),
+                                const Divider(
+                                  height: 1,
+                                  color: borderCustom,
+                                  indent: 56,
+                                ),
+                                _buildActionTile(
+                                  icon: Icons.delete_outline_rounded,
+                                  title: "Reset Local Ledger",
+                                  subtitle:
+                                      "Erase offline entries from this phone",
+                                  iconColor: redAccent,
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: textMuted,
+                                    size: 20,
+                                  ),
+                                  onTap: () {
+                                    AppToast.show(
+                                      context,
+                                      title: "Hold to reset data!",
+                                      type: ToastType.warning,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 22),
+
+                          // DEVELOPER INFO WITH EXPANDABLE DETAILS
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeInOut,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: cardSurface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: _isDevCardExpanded
+                                    ? greenAccent.withValues(alpha: 0.3)
+                                    : borderCustom,
                               ),
+                            ),
+                            child: Column(
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _isDevCardExpanded = !_isDevCardExpanded;
+                                    });
+                                  },
+                                  splashColor: Colors.transparent,
+                                  highlightColor: Colors.transparent,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: cardSurfaceLight,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: borderCustom,
+                                          ),
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.code_rounded,
+                                            color: greenAccent,
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Text(
+                                                  "HISAAB",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 1.1,
+                                                  ),
+                                                ),
+                                                const Text(
+                                                  "+",
+                                                  style: TextStyle(
+                                                    color: greenAccent,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF1B2A1E,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: greenAccent
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    "v4.4.1",
+                                                    style: TextStyle(
+                                                      color: greenAccent,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 3),
+                                            const Text(
+                                              "Developed by Sahil Sonwanshi",
+                                              style: TextStyle(
+                                                color: textMuted,
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: const BoxDecoration(
+                                          color: cardSurfaceLight,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: AnimatedRotation(
+                                          turns: _isDevCardExpanded ? 0.5 : 0.0,
+                                          duration: const Duration(
+                                            milliseconds: 250,
+                                          ),
+                                          child: const Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: textMuted,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_isDevCardExpanded) ...[
+                                  const SizedBox(height: 16),
+                                  const Divider(height: 1, color: borderCustom),
+                                  const SizedBox(height: 14),
+                                  _buildContactTile(
+                                    icon: Icons.alternate_email_rounded,
+                                    title: "Email Support",
+                                    value: "sahilsonwanshi94@gmail.com",
+                                    iconColor: const Color(0xFF38BDF8),
+                                    onTap: () {
+                                      Clipboard.setData(
+                                        const ClipboardData(
+                                          text: "sahilsonwanshi94@gmail.com",
+                                        ),
+                                      );
+                                      AppToast.show(
+                                        context,
+                                        title: "Email copied!",
+                                        type: ToastType.success,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    // Expandable Contact Details Section
-                    if (_isDevCardExpanded) ...[
-                      const SizedBox(height: 16),
-                      const Divider(height: 1, color: borderCustom),
-                      const SizedBox(height: 14),
-
-                      // Contact Item 2: Email
-                      _buildContactTile(
-                        icon: Icons.alternate_email_rounded,
-                        title: "Email Support",
-                        value: "sahilsonwanshi94@gmail.com",
-                        iconColor: const Color(0xFF38BDF8),
-                        onTap: () {
-                          AppToast.show(
-                            context,
-                            title: "Email copied!",
-                            type: ToastType.success,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
-                ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

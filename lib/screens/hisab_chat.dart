@@ -132,7 +132,6 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
           backgroundColor: oledBg,
           body: Stack(
             children: [
-              // Subtle background layer
               Positioned.fill(
                 child: Opacity(
                   opacity: 0.25,
@@ -145,11 +144,9 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   ),
                 ),
               ),
-
               SafeArea(
                 child: Column(
                   children: [
-                    // Top Bar
                     Padding(
                       padding: const EdgeInsets.only(
                         left: 12,
@@ -202,8 +199,6 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         ],
                       ),
                     ),
-
-                    // Net Balance Card
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -305,8 +300,6 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         ),
                       ),
                     ),
-
-                    // Scrollable Timeline
                     Expanded(
                       child: historyList.isEmpty
                           ? const Center(
@@ -476,8 +469,6 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                               },
                             ),
                     ),
-
-                    // Bottom Dock
                     _buildBottomDock(),
                   ],
                 ),
@@ -530,6 +521,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                     ),
                   ),
                 ),
+                // BUG 3 FIX: Only UPI, Cash, ATM
                 PopupMenuButton<String>(
                   color: surfaceHighlight,
                   onSelected: (val) =>
@@ -540,13 +532,6 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                       child: Text("UPI", style: TextStyle(color: Colors.white)),
                     ),
                     const PopupMenuItem(
-                      value: "GPay",
-                      child: Text(
-                        "GPay",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    const PopupMenuItem(
                       value: "Cash",
                       child: Text(
                         "Cash",
@@ -554,11 +539,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                       ),
                     ),
                     const PopupMenuItem(
-                      value: "Card",
-                      child: Text(
-                        "Card",
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      value: "ATM",
+                      child: Text("ATM", style: TextStyle(color: Colors.white)),
                     ),
                   ],
                   child: Container(

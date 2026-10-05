@@ -22,7 +22,11 @@ class EntryFormView extends StatefulWidget {
   State<EntryFormView> createState() => _EntryFormViewState();
 }
 
-class _EntryFormViewState extends State<EntryFormView> {
+class _EntryFormViewState extends State<EntryFormView>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   late Box<FriendModel> _friendsBox;
   late Box<TransactionModel> _transBox;
   late HisaabEntryService _entryService;
@@ -36,12 +40,11 @@ class _EntryFormViewState extends State<EntryFormView> {
   final TextEditingController _newFriendPhoneCtrl = TextEditingController();
   final TextEditingController _newFriendNoteCtrl = TextEditingController();
 
+  // BUG 3 FIX: Only UPI, Cash, ATM
   final List<Map<String, dynamic>> _paymentOptions = [
     {'name': 'UPI', 'icon': Icons.account_balance_wallet_rounded},
     {'name': 'Cash', 'icon': Icons.payments_rounded},
-    {'name': 'GPay', 'icon': Icons.contactless_rounded},
-    {'name': 'PhonePe', 'icon': Icons.send_to_mobile_rounded},
-    {'name': 'Bank Transfer', 'icon': Icons.account_balance_rounded},
+    {'name': 'ATM', 'icon': Icons.credit_card_rounded},
   ];
 
   @override
@@ -120,7 +123,6 @@ class _EntryFormViewState extends State<EntryFormView> {
 
     final noteText = _noteCtrl.text.trim();
 
-    // Agar koi dost select nahi hai, toh ise direct Personal Kharcha mark karein
     if (_stateData.selectedFriendKeys.isEmpty) {
       _entryService.saveSelfKharcha(
         title: noteText.isNotEmpty ? noteText : "Personal Kharcha",
@@ -142,7 +144,6 @@ class _EntryFormViewState extends State<EntryFormView> {
       return;
     }
 
-    // Dost ya Multi-friend split
     _entryService.saveTransaction(
       selectedFriendKeys: _stateData.selectedFriendKeys,
       totalAmount: amount,
@@ -248,6 +249,8 @@ class _EntryFormViewState extends State<EntryFormView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return Scaffold(
       backgroundColor: bgOled,
       resizeToAvoidBottomInset: true,

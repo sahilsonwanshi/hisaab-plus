@@ -31,11 +31,11 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 180),
     );
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutQuad),
     );
 
     _rotationAnimation = Tween<double>(begin: 0.0, end: 0.125).animate(
@@ -49,10 +49,14 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
     super.dispose();
   }
 
-  void _handlePlusTap() async {
-    await _animController.forward();
-    await _animController.reverse();
+  void _handlePlusTap() {
+    // 1. Instant Trigger (0ms delay navigation)
     widget.onAddPressed();
+
+    // 2. Parallel spring bounce
+    _animController.forward().then((_) {
+      if (mounted) _animController.reverse();
+    });
   }
 
   @override
@@ -63,16 +67,15 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
       bottom: 16,
       child: Center(
         child: ConstrainedBox(
-          // Width ko thoda broad aur proportional banaya
           constraints: const BoxConstraints(maxWidth: 345),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Sleek Comfortable Capsule Navigation (Home, Khata, Profile)
+              // 1. 3-Tab Capsule Nav
               Expanded(
                 child: Container(
-                  height: 60, // Squeezed feel khatam karne ke liye 60px height
+                  height: 60,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
@@ -81,7 +84,7 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                     color: navBg,
                     borderRadius: BorderRadius.circular(34),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.06),
+                      color: Colors.white.withValues(alpha: 0.06),
                       width: 1,
                     ),
                     boxShadow: const [
@@ -105,7 +108,7 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
 
               const SizedBox(width: 12),
 
-              // 2. Proportional Animated White Floating '+' Button
+              // 2. Instant Responsive Animated Floating '+' Button
               GestureDetector(
                 onTap: _handlePlusTap,
                 behavior: HitTestBehavior.opaque,
@@ -159,7 +162,6 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeInOut,
-        // Active pill ko bada aur prominent banaya gaya hai
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? activeChipBg : Colors.transparent,

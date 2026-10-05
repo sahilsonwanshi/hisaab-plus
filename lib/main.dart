@@ -13,7 +13,6 @@ import 'widgets/bottom_nav_bar.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Status & Navigation bar ko Pitch Black look dena
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -25,7 +24,6 @@ void main() async {
 
   await Hive.initFlutter();
 
-  // Adapters register karo
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(TransactionModelAdapter());
   }
@@ -33,7 +31,6 @@ void main() async {
     Hive.registerAdapter(FriendModelAdapter());
   }
 
-  // Database boxes safely open karo
   if (!Hive.isBoxOpen('transactions_box')) {
     await Hive.openBox<TransactionModel>('transactions_box');
   }
@@ -51,9 +48,9 @@ class HisaabApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'HISAAB+ v4.4.0',
+      title: 'HISAAB+ v4.4.1',
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF000000), // OLED Pitch Black
+        scaffoldBackgroundColor: const Color(0xFF000000),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF000000),
           elevation: 0,
@@ -71,50 +68,132 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with SingleTickerProviderStateMixin {
   int _activeTab = 0; // 0: Home, 1: Khata, 2: Profile
+  bool _isEntryOpen = false;
+
+  late final PageController _pageController;
+  late final AnimationController _popupAnimController;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _activeTab);
+
+    _popupAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.96, end: 1.0).animate(
+      CurvedAnimation(parent: _popupAnimController, curve: Curves.easeOutCubic),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _popupAnimController, curve: Curves.easeOutQuad),
+    );
+
+    _popupAnimController.value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _popupAnimController.dispose();
+    super.dispose();
+  }
+
+  void _onTabSelected(int index) {
+    if (_isEntryOpen) {
+      setState(() => _isEntryOpen = false);
+    }
+    if (_activeTab == index) return;
+
+    setState(() => _activeTab = index);
+    _pageController.jumpToPage(index);
+    _popupAnimController.forward(from: 0.0);
+  }
 
   void _openQuickEntry() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            EntryFormView(entryType: 0, onClose: () => Navigator.pop(context)),
-      ),
-    );
+    setState(() => _isEntryOpen = true);
+  }
+
+  void _closeQuickEntry() {
+    setState(() => _isEntryOpen = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          // Persistent Screen Switcher
-          IndexedStack(
-            index: _activeTab,
-            children: [
-              HomeScreen(
-                onTabChange: (index) {
-                  setState(() => _activeTab = index);
-                },
-                onOpenEntry: _openQuickEntry,
-              ),
-              const DostKhataScreen(),
-              const ProfileScreen(),
-            ],
-          ),
+    // PopScope intercepts the Android system back button
+    return PopScope(
+      canPop: !_isEntryOpen && _activeTab == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
 
-          // OLED Luxury Floating Navigation Bar
-          FloatingOledNavBar(
-            activeTab: _activeTab,
-            onTabSelected: (index) {
-              setState(() => _activeTab = index);
-            },
-            onAddPressed: _openQuickEntry,
-          ),
-        ],
+        // 1. Agar Entry Form khula hai, toh use band karo aur pichli screen par aao
+        if (_isEntryOpen) {
+          _closeQuickEntry();
+          return;
+        }
+
+        // 2. Agar Khata ya Profile screen par hain, toh pehle Home screen par switch karo
+        if (_activeTab != 0) {
+          _onTabSelected(0);
+          return;
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF000000),
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. PageView Slider (Home, Khata, Profile)
+            ScaleTransition(
+              scale: _scaleAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: PageView(
+                  controller: _pageController,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  onPageChanged: (index) {
+                    setState(() => _activeTab = index);
+                  },
+                  children: [
+                    HomeScreen(
+                      onTabChange: _onTabSelected,
+                      onOpenEntry: _openQuickEntry,
+                    ),
+                    const DostKhataScreen(),
+                    const ProfileScreen(),
+                  ],
+                ),
+              ),
+            ),
+
+            // 2. Pre-loaded Entry Form View
+            if (_isEntryOpen)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(0xFF000000),
+                  child: EntryFormView(entryType: 0, onClose: _closeQuickEntry),
+                ),
+              ),
+
+            // 3. Floating Bottom Navigation Bar
+            if (!_isEntryOpen)
+              FloatingOledNavBar(
+                activeTab: _activeTab,
+                onTabSelected: _onTabSelected,
+                onAddPressed: _openQuickEntry,
+              ),
+          ],
+        ),
       ),
     );
   }

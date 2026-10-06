@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/friend_model.dart';
+import '../widgets/custom_toast.dart';
 import '../widgets/smooth_route.dart';
 import 'entry_form_screen.dart';
 import 'hisab_chat.dart';
@@ -17,7 +18,6 @@ class DostKhataScreen extends StatefulWidget {
 
 class _DostKhataScreenState extends State<DostKhataScreen>
     with AutomaticKeepAliveClientMixin {
-  // Page memory me cached rahegi, switch karte waqt destroy nahi hogi
   @override
   bool get wantKeepAlive => true;
 
@@ -77,6 +77,110 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     );
   }
 
+  // Khata list me dost par long-press karne par direct delete / clear modal
+  void _showKhataOptionsBottomSheet(dynamic key, FriendModel dost) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardSurfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: greenAccent,
+                ),
+                title: Text(
+                  dost.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  "₹${dost.balance} net • ${dost.history.length} transactions",
+                  style: const TextStyle(color: textMuted, fontSize: 12),
+                ),
+              ),
+              const Divider(color: Colors.white10),
+              ListTile(
+                leading: const Icon(
+                  Icons.cleaning_services_rounded,
+                  color: Colors.amber,
+                ),
+                title: const Text(
+                  "Clear Chat History",
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  "Sare statement delete karein aur balance ₹0 karein",
+                  style: TextStyle(color: textMuted, fontSize: 11),
+                ),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  setState(() {
+                    dost.history.clear();
+                    dost.balance = 0;
+                    dost.type = "settled";
+                    dost.lastMessage = "Chat cleared";
+                    dost.lastDate = "Aaj";
+                  });
+                  dost.save();
+                  AppToast.show(
+                    context,
+                    title: "${dost.name} ki chat clear ho gayi!",
+                    type: ToastType.warning,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: redAccent,
+                ),
+                title: const Text(
+                  "Delete Pura Khata",
+                  style: TextStyle(
+                    color: redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  "Dost aur record list se permanent hatayein",
+                  style: TextStyle(color: textMuted, fontSize: 11),
+                ),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  dost.delete();
+                  AppToast.show(
+                    context,
+                    title: "${dost.name} ka khata delete ho gaya!",
+                    type: ToastType.error,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _getInitials(String name) {
     if (name.trim().isEmpty) return '?';
     final parts = name.trim().split(' ');
@@ -93,7 +197,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin ke liye zaroori
+    super.build(context);
 
     return Scaffold(
       backgroundColor: oledBg,
@@ -101,7 +205,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
         child: Column(
           children: [
             // =========================================================
-            // 1. FIXED STICKY TOP BAR (Does not move on scroll/pull)
+            // 1. FIXED STICKY TOP BAR
             // =========================================================
             Container(
               color: oledBg,
@@ -657,6 +761,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                 isLena: isLena,
                                 isSettled: isSettled,
                                 onTap: () => _openChat(key, dost),
+                                onLongPress: () =>
+                                    _showKhataOptionsBottomSheet(key, dost),
                               );
                             }),
                         ],
@@ -764,6 +870,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     required bool isLena,
     required bool isSettled,
     required VoidCallback onTap,
+    required VoidCallback onLongPress,
   }) {
     final Color badgeColor = isSettled
         ? textMuted
@@ -780,6 +887,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(22),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

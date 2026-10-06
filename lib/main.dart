@@ -37,6 +37,10 @@ void main() async {
   if (!Hive.isBoxOpen('friends_box')) {
     await Hive.openBox<FriendModel>('friends_box');
   }
+  // Tags ko permanent rakhne ke liye tags_box open kiya gaya hai
+  if (!Hive.isBoxOpen('tags_box')) {
+    await Hive.openBox<String>('tags_box');
+  }
 
   runApp(const HisaabApp());
 }
@@ -127,19 +131,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    // PopScope intercepts the Android system back button
     return PopScope(
       canPop: !_isEntryOpen && _activeTab == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // 1. Agar Entry Form khula hai, toh use band karo aur pichli screen par aao
+        // 1. Agar Entry Form khula hai, toh pehle use band karo
         if (_isEntryOpen) {
           _closeQuickEntry();
           return;
         }
 
-        // 2. Agar Khata ya Profile screen par hain, toh pehle Home screen par switch karo
+        // 2. Agar Khata ya Profile tab par hain, toh pehle Home tab par aao
         if (_activeTab != 0) {
           _onTabSelected(0);
           return;
@@ -151,7 +154,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. PageView Slider (Home, Khata, Profile)
+            // 1. Pre-loaded PageView Slider (Home, Khata, Profile)
             ScaleTransition(
               scale: _scaleAnimation,
               child: FadeTransition(
@@ -176,7 +179,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               ),
             ),
 
-            // 2. Pre-loaded Entry Form View
+            // 2. Entry Form View
             if (_isEntryOpen)
               Positioned.fill(
                 child: ColoredBox(

@@ -29,6 +29,7 @@ class _EntryFormViewState extends State<EntryFormView>
 
   late Box<FriendModel> _friendsBox;
   late Box<TransactionModel> _transBox;
+  late Box<String> _tagsBox;
   late HisaabEntryService _entryService;
 
   late EntryFormStateData _stateData;
@@ -40,7 +41,6 @@ class _EntryFormViewState extends State<EntryFormView>
   final TextEditingController _newFriendPhoneCtrl = TextEditingController();
   final TextEditingController _newFriendNoteCtrl = TextEditingController();
 
-  // BUG 3 FIX: Only UPI, Cash, ATM
   final List<Map<String, dynamic>> _paymentOptions = [
     {'name': 'UPI', 'icon': Icons.account_balance_wallet_rounded},
     {'name': 'Cash', 'icon': Icons.payments_rounded},
@@ -52,15 +52,23 @@ class _EntryFormViewState extends State<EntryFormView>
     super.initState();
     _friendsBox = Hive.box<FriendModel>('friends_box');
     _transBox = Hive.box<TransactionModel>('transactions_box');
+    _tagsBox = Hive.box<String>('tags_box');
+
     _entryService = HisaabEntryService(
       friendsBox: _friendsBox,
       transBox: _transBox,
     );
 
+    // Default 3 tags agar pehli baar app run ho rahi ho
+    if (_tagsBox.isEmpty) {
+      _tagsBox.addAll(['Personal', 'Business', 'College']);
+    }
+
     _stateData = EntryFormStateData(
       txType: widget.entryType == 2 ? 'liya' : 'diya',
       selectedTag: null,
       selectedFriendKeys: {},
+      availableTags: _tagsBox.values.toList(), // Hive se permanently load
     );
   }
 
@@ -121,28 +129,16 @@ class _EntryFormViewState extends State<EntryFormView>
       return;
     }
 
-    final noteText = _noteCtrl.text.trim();
-
     if (_stateData.selectedFriendKeys.isEmpty) {
-      _entryService.saveSelfKharcha(
-        title: noteText.isNotEmpty ? noteText : "Personal Kharcha",
-        amount: amount,
-        category: _stateData.selectedTag ?? "Personal",
-        paymentMode: _stateData.selectedPaymentMode,
-      );
-
-      _amountCtrl.clear();
-      _noteCtrl.clear();
-      FocusScope.of(context).unfocus();
-
       AppToast.show(
         context,
-        title: "₹$amount ka Personal Kharcha save ho gaya!",
-        type: ToastType.success,
+        title: "Kripya kam se kam ek dost chunein!",
+        type: ToastType.warning,
       );
-      widget.onClose();
       return;
     }
+
+    final noteText = _noteCtrl.text.trim();
 
     _entryService.saveTransaction(
       selectedFriendKeys: _stateData.selectedFriendKeys,
@@ -339,8 +335,8 @@ class _EntryFormViewState extends State<EntryFormView>
             }
 
             final selectedCount = _stateData.selectedFriendKeys.length;
-            String activeFriendName = "Personal (Self Kharcha)";
-            String activeFriendBalance = "Kharcha Mode";
+            String activeFriendName = "Koi dost select karein";
+            String activeFriendBalance = "Khata Chunein";
             bool isPositiveBalance = true;
 
             if (selectedCount == 1) {
@@ -394,16 +390,18 @@ class _EntryFormViewState extends State<EntryFormView>
                         tags: _stateData.availableTags,
                         onTagSelected: (tag) =>
                             setState(() => _stateData.selectedTag = tag),
+                        // PERMANENT HIVE SAVE FIX:
                         onCustomTagAdded: (newTag) {
                           setState(() {
-                            if (!_stateData.availableTags.contains(newTag)) {
-                              _stateData.availableTags.add(newTag);
+                            if (!_tagsBox.values.contains(newTag)) {
+                              _tagsBox.add(newTag); // Local database me save
                             }
+                            _stateData.availableTags = _tagsBox.values.toList();
                             _stateData.selectedTag = newTag;
                           });
                           AppToast.show(
                             context,
-                            title: "'$newTag' tag add ho gaya!",
+                            title: "'$newTag' tag permanent add ho gaya!",
                             type: ToastType.success,
                           );
                         },

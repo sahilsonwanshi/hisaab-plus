@@ -302,25 +302,18 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
         ? (_entryType == 0 ? "Udhar Diya" : "Paisa Liya")
         : _noteController.text.trim();
 
-    if (widget.friendKey != null) {
-      _entryService.saveTransaction(
-        selectedFriendKeys: {widget.friendKey},
-        totalAmount: amount,
+    // ERROR FIX: Naye Single Friend method ko call karein
+    final targetFriendKey =
+        widget.friendKey ?? _resolveFriend(_friendsBox)?.key;
+
+    if (targetFriendKey != null) {
+      _entryService.saveSingleFriendTransaction(
+        friendKey: targetFriendKey,
+        amount: amount,
         txType: _entryType == 0 ? 'diya' : 'liya',
         note: noteText,
         paymentMode: _selectedPaymentMode,
       );
-    } else {
-      final currentFriend = _resolveFriend(_friendsBox);
-      if (currentFriend != null) {
-        _entryService.saveTransaction(
-          selectedFriendKeys: {currentFriend.key},
-          totalAmount: amount,
-          txType: _entryType == 0 ? 'diya' : 'liya',
-          note: noteText,
-          paymentMode: _selectedPaymentMode,
-        );
-      }
     }
 
     _amountController.clear();

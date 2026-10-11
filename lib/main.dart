@@ -37,9 +37,13 @@ void main() async {
   if (!Hive.isBoxOpen('friends_box')) {
     await Hive.openBox<FriendModel>('friends_box');
   }
-  // Tags ko permanent rakhne ke liye tags_box open kiya gaya hai
+  // Tags ko permanent rakhne ke liye tags_box
   if (!Hive.isBoxOpen('tags_box')) {
     await Hive.openBox<String>('tags_box');
+  }
+  // NEW: Khud ka kharcha (Self expense) box bina dost linking ke
+  if (!Hive.isBoxOpen('personal_expenses_box')) {
+    await Hive.openBox<Map>('personal_expenses_box');
   }
 
   runApp(const HisaabApp());
@@ -52,7 +56,7 @@ class HisaabApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'HISAAB+ v4.4.1',
+      title: 'HISAAB+ v4.4.2',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF000000),
         appBarTheme: const AppBarTheme(
@@ -136,13 +140,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // 1. Agar Entry Form khula hai, toh pehle use band karo
         if (_isEntryOpen) {
           _closeQuickEntry();
           return;
         }
 
-        // 2. Agar Khata ya Profile tab par hain, toh pehle Home tab par aao
         if (_activeTab != 0) {
           _onTabSelected(0);
           return;
@@ -154,7 +156,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Pre-loaded PageView Slider (Home, Khata, Profile)
             ScaleTransition(
               scale: _scaleAnimation,
               child: FadeTransition(
@@ -178,8 +179,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 ),
               ),
             ),
-
-            // 2. Entry Form View
             if (_isEntryOpen)
               Positioned.fill(
                 child: ColoredBox(
@@ -187,8 +186,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                   child: EntryFormView(entryType: 0, onClose: _closeQuickEntry),
                 ),
               ),
-
-            // 3. Floating Bottom Navigation Bar
             if (!_isEntryOpen)
               FloatingOledNavBar(
                 activeTab: _activeTab,

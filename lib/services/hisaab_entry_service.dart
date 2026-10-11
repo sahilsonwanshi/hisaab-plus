@@ -10,7 +10,6 @@ class HisaabEntryService {
 
   HisaabEntryService({required this.friendsBox, required this.transBox});
 
-  /// Naya friend save karke uska generated key return karega (Tag optional hai)
   dynamic addNewFriend({
     required String name,
     required String phone,
@@ -44,113 +43,82 @@ class HisaabEntryService {
     return friendsBox.add(newFriend);
   }
 
-  /// Selected friends me amount split karke Friends aur Transactions Box me save karega
-  void saveTransaction({
-    required Set<dynamic> selectedFriendKeys,
-    required int totalAmount,
+  // Single Friend Transaction Save (Group Split logic removed)
+  void saveSingleFriendTransaction({
+    required dynamic friendKey,
+    required int amount,
     required String txType, // 'diya' ya 'liya'
     required String note,
     required String paymentMode,
   }) {
-    if (selectedFriendKeys.isEmpty || totalAmount <= 0) return;
+    if (friendKey == null || amount <= 0) return;
 
-    final splitAmount = (totalAmount / selectedFriendKeys.length).round();
+    final FriendModel? friend = friendsBox.get(friendKey);
+    if (friend == null) return;
+
     final noteText = note.trim().isNotEmpty ? note.trim() : "Hisaab Entry";
     final now = DateTime.now();
     final dateStr =
         "${now.day}/${now.month} ${now.hour}:${now.minute.toString().padLeft(2, '0')}";
 
-    for (var key in selectedFriendKeys) {
-      final FriendModel? friend = friendsBox.get(key);
-      if (friend == null) continue;
-
-      if (txType == 'diya') {
-        // Diya: Humne paise diye -> Humara lena banta hai (+ balance)
-        if (friend.type == 'lena') {
-          friend.balance += splitAmount;
-        } else if (friend.type == 'dena') {
-          if (friend.balance > splitAmount) {
-            friend.balance -= splitAmount;
-          } else if (friend.balance == splitAmount) {
-            friend.balance = 0;
-            friend.type = 'settled';
-          } else {
-            friend.balance = splitAmount - friend.balance;
-            friend.type = 'lena';
-          }
+    if (txType == 'diya') {
+      if (friend.type == 'lena') {
+        friend.balance += amount;
+      } else if (friend.type == 'dena') {
+        if (friend.balance > amount) {
+          friend.balance -= amount;
+        } else if (friend.balance == amount) {
+          friend.balance = 0;
+          friend.type = 'settled';
         } else {
-          // settled or 0 balance
-          friend.balance = splitAmount;
+          friend.balance = amount - friend.balance;
           friend.type = 'lena';
         }
       } else {
-        // Liya: Humne paise liye -> Humara dena banta hai (- balance)
-        if (friend.type == 'dena') {
-          friend.balance += splitAmount;
-        } else if (friend.type == 'lena') {
-          if (friend.balance > splitAmount) {
-            friend.balance -= splitAmount;
-          } else if (friend.balance == splitAmount) {
-            friend.balance = 0;
-            friend.type = 'settled';
-          } else {
-            friend.balance = splitAmount - friend.balance;
-            friend.type = 'dena';
-          }
+        friend.balance = amount;
+        friend.type = 'lena';
+      }
+    } else {
+      if (friend.type == 'dena') {
+        friend.balance += amount;
+      } else if (friend.type == 'lena') {
+        if (friend.balance > amount) {
+          friend.balance -= amount;
+        } else if (friend.balance == amount) {
+          friend.balance = 0;
+          friend.type = 'settled';
         } else {
-          // settled or 0 balance
-          friend.balance = splitAmount;
+          friend.balance = amount - friend.balance;
           friend.type = 'dena';
         }
+      } else {
+        friend.balance = amount;
+        friend.type = 'dena';
       }
-
-      friend.lastMessage = "$noteText via $paymentMode";
-      friend.lastDate = "Aaj";
-      friend.history.add({
-        "title": noteText,
-        "amount": splitAmount,
-        "type": txType,
-        "date": dateStr,
-        "mode": paymentMode,
-      });
-
-      friend.save();
-
-      // Main Ledger Transactions Box Record
-      transBox.add(
-        TransactionModel(
-          date: now,
-          title: friend.name,
-          subtitle: "$noteText • $paymentMode",
-          amount: splitAmount,
-          iconCodePoint: txType == 'diya'
-              ? Icons.arrow_upward_rounded.codePoint
-              : Icons.arrow_downward_rounded.codePoint,
-          type: txType == 'diya' ? 'lena' : 'dena',
-          mode: paymentMode,
-        ),
-      );
     }
-  }
 
-  /// Self / Personal Kharcha save karne ke liye (Bina kisi dost ke direct ledger entry)
-  void saveSelfKharcha({
-    required String title,
-    required int amount,
-    required String category,
-    required String paymentMode,
-  }) {
-    if (amount <= 0) return;
-    final now = DateTime.now();
+    friend.lastMessage = "$noteText via $paymentMode";
+    friend.lastDate = "Aaj";
+    friend.history.add({
+      "title": noteText,
+      "amount": amount,
+      "type": txType,
+      "date": dateStr,
+      "mode": paymentMode,
+    });
+
+    friend.save();
 
     transBox.add(
       TransactionModel(
         date: now,
-        title: title.trim().isNotEmpty ? title.trim() : "Kharcha",
-        subtitle: "$category • $paymentMode",
+        title: friend.name,
+        subtitle: "$noteText • $paymentMode",
         amount: amount,
-        iconCodePoint: Icons.receipt_long_rounded.codePoint,
-        type: 'kharcha',
+        iconCodePoint: txType == 'diya'
+            ? Icons.arrow_upward_rounded.codePoint
+            : Icons.arrow_downward_rounded.codePoint,
+        type: txType == 'diya' ? 'lena' : 'dena',
         mode: paymentMode,
       ),
     );

@@ -4,9 +4,9 @@ class EntryFormStateData {
   String selectedPaymentMode;
   String? selectedTag; // Optional selection
   bool isAddAccordionOpen;
-  final Set<dynamic> selectedFriendKeys;
+  dynamic selectedFriendKey; // Single Friend Selection (No Group Split)
 
-  // By default sirf 3 tags + runtime custom added tags
+  // By default 3 tags + runtime custom added tags
   List<String> availableTags;
 
   EntryFormStateData({
@@ -15,8 +15,7 @@ class EntryFormStateData {
     this.selectedPaymentMode = 'UPI',
     this.selectedTag,
     this.isAddAccordionOpen = false,
-    Set<dynamic>? selectedFriendKeys,
+    this.selectedFriendKey,
     List<String>? availableTags,
-  }) : selectedFriendKeys = selectedFriendKeys ?? {},
-       availableTags = availableTags ?? ['Personal', 'Business', 'College'];
+  }) : availableTags = availableTags ?? ['Personal', 'Business', 'College'];
 }

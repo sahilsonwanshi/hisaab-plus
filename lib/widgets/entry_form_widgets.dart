@@ -33,15 +33,17 @@ class FilterItem {
 }
 
 // -------------------------------------------------------------
-// 1. TOP NAVIGATION HEADER
+// 1. TOP NAVIGATION HEADER WITH SLIDING SWITCH
 // -------------------------------------------------------------
 class EntryTopNavHeader extends StatelessWidget {
-  final int selectedCount;
+  final int activeTab; // 0: Dost, 1: Personal
+  final ValueChanged<int> onTabSwitch;
   final VoidCallback onBack;
 
   const EntryTopNavHeader({
     super.key,
-    required this.selectedCount,
+    required this.activeTab,
+    required this.onTabSwitch,
     required this.onBack,
   });
 
@@ -62,9 +64,9 @@ class EntryTopNavHeader extends StatelessWidget {
                 ),
                 onPressed: onBack,
               ),
-              const Text(
-                "Choose Friends",
-                style: TextStyle(
+              Text(
+                activeTab == 0 ? "Choose Friends" : "Personal Kharcha",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -74,27 +76,58 @@ class EntryTopNavHeader extends StatelessWidget {
             ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: selectedCount > 0 ? const Color(0xFF0F291C) : surfaceSec,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selectedCount > 0
-                    ? const Color(0xFF00E676).withValues(alpha: 0.4)
-                    : borderCustom,
-              ),
+              color: Colors.black.withOpacity(0.40),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
             ),
-            child: Text(
-              selectedCount == 1
-                  ? "1 Selected"
-                  : (selectedCount > 1
-                        ? "$selectedCount Selected"
-                        : "0 Selected"),
-              style: TextStyle(
-                color: selectedCount > 0 ? const Color(0xFF34D399) : neutral400,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => onTabSwitch(0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activeTab == 0 ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      "Dost",
+                      style: TextStyle(
+                        color: activeTab == 0 ? Colors.black : neutral400,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => onTabSwitch(1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activeTab == 1 ? lenaGreen : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      "Personal",
+                      style: TextStyle(
+                        color: activeTab == 1 ? Colors.black : neutral400,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -144,14 +177,16 @@ class EntrySearchBarAndFilters extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.white
-              : (item.type == 'tag' ? const Color(0xFF0C1929) : surfaceSec),
+              : (item.type == 'tag'
+                    ? const Color(0xFF0C1929).withOpacity(0.65)
+                    : Colors.black.withOpacity(0.35)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? Colors.white
                 : (item.type == 'tag'
-                      ? const Color(0xFF0284C7).withValues(alpha: 0.4)
-                      : borderCustom),
+                      ? const Color(0xFF0284C7).withOpacity(0.4)
+                      : Colors.white.withOpacity(0.10)),
           ),
         ),
         child: Row(
@@ -185,13 +220,13 @@ class EntrySearchBarAndFilters extends StatelessWidget {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF121415),
+              color: Colors.black.withOpacity(0.35),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: Colors.white.withOpacity(0.10)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.search_rounded, color: neutral500, size: 18),
+                const Icon(Icons.search_rounded, color: neutral400, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
@@ -200,7 +235,7 @@ class EntrySearchBarAndFilters extends StatelessWidget {
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: const InputDecoration(
                       hintText: "Dost ka naam search karein...",
-                      hintStyle: TextStyle(color: neutral500, fontSize: 13),
+                      hintStyle: TextStyle(color: neutral400, fontSize: 13),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -216,14 +251,13 @@ class EntrySearchBarAndFilters extends StatelessWidget {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: surfaceSec,
+                        color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: borderCustom),
                       ),
                       child: const Icon(
                         Icons.close,
                         size: 12,
-                        color: neutral400,
+                        color: neutral300,
                       ),
                     ),
                   ),
@@ -364,13 +398,13 @@ class AddFriendAccordionWidget extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: surfaceSec,
+        color: Colors.black.withOpacity(0.40),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderCustom),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: neutral500, size: 17),
+          Icon(icon, color: neutral400, size: 17),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -394,9 +428,9 @@ class AddFriendAccordionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: surfaceCard,
+        color: Colors.black.withOpacity(0.35),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: lenaGreen.withValues(alpha: 0.45)),
+        border: Border.all(color: lenaGreen.withOpacity(0.45)),
       ),
       child: Column(
         children: [
@@ -411,11 +445,9 @@ class AddFriendAccordionWidget extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F291C),
+                      color: const Color(0xFF0F291C).withOpacity(0.70),
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: lenaGreen.withValues(alpha: 0.5),
-                      ),
+                      border: Border.all(color: lenaGreen.withOpacity(0.5)),
                     ),
                     child: const Icon(
                       Icons.person_add_rounded,
@@ -448,7 +480,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
                                 color: const Color(0xFF0F291C),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: lenaGreen.withValues(alpha: 0.4),
+                                  color: lenaGreen.withOpacity(0.4),
                                 ),
                               ),
                               child: const Text(
@@ -474,9 +506,8 @@ class AddFriendAccordionWidget extends StatelessWidget {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: surfaceSec,
+                      color: Colors.white.withOpacity(0.08),
                       shape: BoxShape.circle,
-                      border: Border.all(color: borderCustom),
                     ),
                     child: Icon(
                       isOpen
@@ -491,7 +522,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
             ),
           ),
           if (isOpen) ...[
-            const Divider(height: 1, color: borderCustom),
+            Divider(height: 1, color: Colors.white.withOpacity(0.08)),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
@@ -545,9 +576,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
                           return Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: GestureDetector(
-                              onTap: () {
-                                onTagSelected(isSel ? null : tag);
-                              },
+                              onTap: () => onTagSelected(isSel ? null : tag),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -560,7 +589,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: isSel
-                                        ? lenaGreen.withValues(alpha: 0.6)
+                                        ? lenaGreen.withOpacity(0.6)
                                         : borderCustom,
                                   ),
                                 ),
@@ -591,8 +620,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
                               color: const Color(0xFF0C1929),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFF0284C7)
-                                    .withValues(alpha: 0.4),
+                                color: const Color(0xFF0284C7).withOpacity(0.4),
                               ),
                             ),
                             child: const Row(
@@ -627,11 +655,13 @@ class AddFriendAccordionWidget extends StatelessWidget {
                           height: 38,
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: borderCustom),
+                              side: BorderSide(
+                                color: Colors.white.withOpacity(0.12),
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              backgroundColor: surfaceSec,
+                              backgroundColor: Colors.black.withOpacity(0.35),
                               padding: EdgeInsets.zero,
                             ),
                             onPressed: onCancel,
@@ -653,33 +683,26 @@ class AddFriendAccordionWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
                             ),
                             onPressed: onSubmit,
-                            child: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "Dost Save Karein",
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Icon(
-                                    Icons.check_rounded,
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Dost Save Karein",
+                                  style: TextStyle(
                                     color: Colors.black,
-                                    size: 16,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
                                   ),
-                                ],
-                              ),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.black,
+                                  size: 16,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -697,7 +720,7 @@ class AddFriendAccordionWidget extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// 4. FRIEND CARD TILE
+// 4. FRIEND CARD TILE (Customized Translucent Glass Look)
 // -------------------------------------------------------------
 class SelectableFriendCardWidget extends StatelessWidget {
   final dynamic friendKey;
@@ -743,12 +766,14 @@ class SelectableFriendCardWidget extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0F1E16) : surfaceCard,
+            color: isSelected
+                ? const Color(0xFF0F1E16).withOpacity(0.80)
+                : Colors.black.withOpacity(0.35),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isSelected
-                  ? lenaGreen.withValues(alpha: 0.8)
-                  : borderCustom,
+                  ? lenaGreen.withOpacity(0.85)
+                  : Colors.white.withOpacity(0.08),
               width: isSelected ? 1.2 : 1,
             ),
           ),
@@ -759,11 +784,13 @@ class SelectableFriendCardWidget extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? const Color(0xFF0F291C) : surfaceSec,
+                  color: isSelected
+                      ? const Color(0xFF0F291C)
+                      : Colors.white.withOpacity(0.08),
                   border: Border.all(
                     color: isSelected
-                        ? lenaGreen.withValues(alpha: 0.5)
-                        : borderCustom,
+                        ? lenaGreen.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.12),
                   ),
                 ),
                 child: Center(
@@ -822,7 +849,7 @@ class SelectableFriendCardWidget extends StatelessWidget {
                   Text(
                     balanceLabel,
                     style: TextStyle(
-                      color: amountColor.withValues(alpha: 0.85),
+                      color: amountColor.withOpacity(0.85),
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -837,7 +864,7 @@ class SelectableFriendCardWidget extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: isSelected ? lenaGreen : Colors.transparent,
                   border: Border.all(
-                    color: isSelected ? lenaGreen : neutral600,
+                    color: isSelected ? lenaGreen : Colors.white24,
                     width: 1.5,
                   ),
                 ),
@@ -854,13 +881,13 @@ class SelectableFriendCardWidget extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// 5. BOTTOM ENTRY DOCK BAR
+// 5. BOTTOM ENTRY DOCK BAR (Fixed Diya/Liya Segmented Pill)
 // -------------------------------------------------------------
 class EntryBottomDockWidget extends StatelessWidget {
   final String activeFriendName;
   final String activeBalance;
   final bool isPositive;
-  final int selectedCount;
+  final bool hasSelectedFriend;
   final TextEditingController noteCtrl;
   final TextEditingController amountCtrl;
   final String selectedPaymentMode;
@@ -875,7 +902,7 @@ class EntryBottomDockWidget extends StatelessWidget {
     required this.activeFriendName,
     required this.activeBalance,
     required this.isPositive,
-    required this.selectedCount,
+    required this.hasSelectedFriend,
     required this.noteCtrl,
     required this.amountCtrl,
     required this.selectedPaymentMode,
@@ -889,26 +916,27 @@ class EntryBottomDockWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-      decoration: const BoxDecoration(
-        color: bgOled,
-        border: Border(top: BorderSide(color: borderCustom, width: 1)),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.35),
+        border: Border(
+          top: BorderSide(color: Colors.white.withOpacity(0.10), width: 1),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, left: 2, right: 2),
+            padding: const EdgeInsets.only(bottom: 8, left: 2, right: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Row(
                     children: [
                       const Text(
                         "Chuna Hua Dost: ",
-                        style: TextStyle(color: neutral400, fontSize: 12),
+                        style: TextStyle(color: Colors.white70, fontSize: 11.5),
                       ),
                       Flexible(
                         child: Text(
@@ -916,7 +944,9 @@ class EntryBottomDockWidget extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: selectedCount > 0 ? lenaGreen : neutral400,
+                            color: hasSelectedFriend
+                                ? lenaGreen
+                                : Colors.white60,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -927,22 +957,22 @@ class EntryBottomDockWidget extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 3,
+                    horizontal: 8,
+                    vertical: 2,
                   ),
                   decoration: BoxDecoration(
                     color: isPositive
-                        ? const Color(0xFF0F291C)
-                        : (selectedCount == 0
-                              ? surfaceSec
-                              : const Color(0xFF2B1015)),
+                        ? const Color(0xFF0F291C).withOpacity(0.8)
+                        : (!hasSelectedFriend
+                              ? Colors.black.withOpacity(0.4)
+                              : const Color(0xFF2B1015).withOpacity(0.8)),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: isPositive
-                          ? lenaGreen.withValues(alpha: 0.4)
-                          : (selectedCount == 0
-                                ? borderCustom
-                                : denaRed.withValues(alpha: 0.4)),
+                          ? lenaGreen.withOpacity(0.4)
+                          : (!hasSelectedFriend
+                                ? Colors.white.withOpacity(0.08)
+                                : denaRed.withOpacity(0.4)),
                     ),
                   ),
                   child: Text(
@@ -950,11 +980,11 @@ class EntryBottomDockWidget extends StatelessWidget {
                     style: TextStyle(
                       color: isPositive
                           ? const Color(0xFF34D399)
-                          : (selectedCount == 0
+                          : (!hasSelectedFriend
                                 ? neutral400
                                 : const Color(0xFFFB7185)),
                       fontWeight: FontWeight.w700,
-                      fontSize: 11,
+                      fontSize: 10.5,
                     ),
                   ),
                 ),
@@ -962,19 +992,19 @@ class EntryBottomDockWidget extends StatelessWidget {
             ),
           ),
           Container(
-            height: 46,
+            height: 44,
             padding: const EdgeInsets.only(left: 12, right: 6),
             decoration: BoxDecoration(
-              color: surfaceSec,
+              color: Colors.black.withOpacity(0.40),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.edit_note_rounded,
-                  color: neutral400,
-                  size: 22,
+                  color: Colors.white60,
+                  size: 20,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -982,23 +1012,24 @@ class EntryBottomDockWidget extends StatelessWidget {
                     controller: noteCtrl,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: const InputDecoration(
-                      hintText: "Hisaab ka note likhein (e.g. Chai, Udhaar)...",
-                      hintStyle: TextStyle(color: neutral500, fontSize: 12.5),
+                      hintText: "Hisaab ka note likhein...",
+                      hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
                 GestureDetector(
                   onTap: onPaymentModeTap,
                   child: Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: surfaceHighlight,
+                      color: Colors.white.withOpacity(0.10),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: borderCustom),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1006,22 +1037,22 @@ class EntryBottomDockWidget extends StatelessWidget {
                         const Icon(
                           Icons.account_balance_wallet_rounded,
                           color: lenaGreen,
-                          size: 14,
+                          size: 13,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Text(
                           selectedPaymentMode,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 3),
+                        const SizedBox(width: 2),
                         const Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          color: neutral400,
-                          size: 15,
+                          color: Colors.white70,
+                          size: 14,
                         ),
                       ],
                     ),
@@ -1030,32 +1061,40 @@ class EntryBottomDockWidget extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+
+          // =========================================================
+          // FIXED DIYA / LIYA CAPSULE PILL
+          // =========================================================
           Container(
             height: 44,
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: surfaceSec,
+              color: Colors.black.withOpacity(0.40),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               children: [
+                // 1. DIYA PILL
                 Expanded(
                   child: GestureDetector(
                     onTap: () => onTxTypeChanged('diya'),
-                    child: Container(
+                    behavior: HitTestBehavior.opaque,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: txType == 'diya'
-                            ? const Color(0xFF0F291C)
+                            ? const Color(0xFF0F291C).withOpacity(0.90)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: txType == 'diya'
-                            ? Border.all(
-                                color: lenaGreen.withValues(alpha: 0.6),
-                                width: 1.1,
-                              )
-                            : Border.all(color: Colors.transparent),
+                        borderRadius: BorderRadius.circular(13),
+                        border: Border.all(
+                          color: txType == 'diya'
+                              ? lenaGreen.withOpacity(0.75)
+                              : Colors.transparent,
+                          width: 1.2,
+                        ),
                       ),
                       child: Center(
                         child: Row(
@@ -1075,8 +1114,10 @@ class EntryBottomDockWidget extends StatelessWidget {
                                 color: txType == 'diya'
                                     ? const Color(0xFF34D399)
                                     : neutral400,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.5,
+                                fontWeight: txType == 'diya'
+                                    ? FontWeight.bold
+                                    : FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -1085,21 +1126,28 @@ class EntryBottomDockWidget extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                const SizedBox(width: 4),
+
+                // 2. LIYA PILL
                 Expanded(
                   child: GestureDetector(
                     onTap: () => onTxTypeChanged('liya'),
-                    child: Container(
+                    behavior: HitTestBehavior.opaque,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: txType == 'liya'
-                            ? const Color(0xFF2B1015)
+                            ? const Color(0xFF2B1015).withOpacity(0.90)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: txType == 'liya'
-                            ? Border.all(
-                                color: denaRed.withValues(alpha: 0.6),
-                                width: 1.1,
-                              )
-                            : Border.all(color: Colors.transparent),
+                        borderRadius: BorderRadius.circular(13),
+                        border: Border.all(
+                          color: txType == 'liya'
+                              ? denaRed.withOpacity(0.75)
+                              : Colors.transparent,
+                          width: 1.2,
+                        ),
                       ),
                       child: Center(
                         child: Row(
@@ -1119,8 +1167,10 @@ class EntryBottomDockWidget extends StatelessWidget {
                                 color: txType == 'liya'
                                     ? const Color(0xFFFB7185)
                                     : neutral400,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.5,
+                                fontWeight: txType == 'liya'
+                                    ? FontWeight.bold
+                                    : FontWeight.w600,
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -1132,18 +1182,18 @@ class EntryBottomDockWidget extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 8),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Container(
                   height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
-                    color: surfaceSec,
+                    color: Colors.black.withOpacity(0.40),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: borderCustom),
+                    border: Border.all(color: Colors.white.withOpacity(0.10)),
                   ),
                   child: Row(
                     children: [
@@ -1152,7 +1202,7 @@ class EntryBottomDockWidget extends StatelessWidget {
                         style: TextStyle(
                           color: lenaGreen,
                           fontWeight: FontWeight.bold,
-                          fontSize: 19,
+                          fontSize: 18,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1168,12 +1218,11 @@ class EntryBottomDockWidget extends StatelessWidget {
                           decoration: const InputDecoration(
                             hintText: "Amount",
                             hintStyle: TextStyle(
-                              color: neutral500,
-                              fontSize: 13.5,
+                              color: Colors.white38,
+                              fontSize: 13,
                             ),
                             border: InputBorder.none,
                             isDense: true,
-                            contentPadding: EdgeInsets.zero,
                           ),
                         ),
                       ),
@@ -1181,7 +1230,7 @@ class EntryBottomDockWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
@@ -1189,20 +1238,17 @@ class EntryBottomDockWidget extends StatelessWidget {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     elevation: 0,
                   ),
                   onPressed: onSave,
                   child: const Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         "Save",
                         style: TextStyle(
-                          color: Colors.black,
                           fontWeight: FontWeight.w900,
                           fontSize: 14,
-                          letterSpacing: -0.2,
                         ),
                       ),
                       SizedBox(width: 4),
@@ -1211,21 +1257,21 @@ class EntryBottomDockWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: onClosePage,
                 child: Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: surfaceSec,
+                    color: Colors.black.withOpacity(0.40),
                     shape: BoxShape.circle,
-                    border: Border.all(color: borderCustom),
+                    border: Border.all(color: Colors.white.withOpacity(0.10)),
                   ),
                   child: const Center(
                     child: Icon(
                       Icons.close_rounded,
-                      color: neutral300,
+                      color: Colors.white,
                       size: 20,
                     ),
                   ),
@@ -1233,15 +1279,6 @@ class EntryBottomDockWidget extends StatelessWidget {
               ),
             ],
           ),
-          // const SizedBox(height: 12),
-          // Container(
-          //   width: 120,
-          //   height: 4,
-          //   decoration: BoxDecoration(
-          //     color: const Color(0xFF2C2C2E),
-          //     borderRadius: BorderRadius.circular(10),
-          //   ),
-          // ),
         ],
       ),
     );

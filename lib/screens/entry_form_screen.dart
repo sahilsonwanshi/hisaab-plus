@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/friend_model.dart';
@@ -30,9 +33,17 @@ class _EntryFormViewState extends State<EntryFormView>
   late Box<FriendModel> _friendsBox;
   late Box<TransactionModel> _transBox;
   late Box<String> _tagsBox;
+  late Box<Map> _personalBox;
   late HisaabEntryService _entryService;
 
   late EntryFormStateData _stateData;
+
+  late PageController _pageController;
+  int _currentSlideIndex = 0; // 0: Dost, 1: Personal
+
+  late ScrollController _friendsScrollCtrl;
+  late ScrollController _personalScrollCtrl;
+  bool _isBottomDockVisible = true;
 
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _noteCtrl = TextEditingController();
@@ -41,10 +52,24 @@ class _EntryFormViewState extends State<EntryFormView>
   final TextEditingController _newFriendPhoneCtrl = TextEditingController();
   final TextEditingController _newFriendNoteCtrl = TextEditingController();
 
+  final TextEditingController _personalTitleCtrl = TextEditingController();
+  final TextEditingController _personalAmountCtrl = TextEditingController();
+  String _personalSelectedCat = 'Chai';
+  String _personalSelectedMode = 'UPI';
+
   final List<Map<String, dynamic>> _paymentOptions = [
     {'name': 'UPI', 'icon': Icons.account_balance_wallet_rounded},
     {'name': 'Cash', 'icon': Icons.payments_rounded},
     {'name': 'ATM', 'icon': Icons.credit_card_rounded},
+  ];
+
+  final List<String> _personalCategories = [
+    'Chai',
+    'Kirana',
+    'Khana',
+    'Medical',
+    'Icecream',
+    'Other',
   ];
 
   @override
@@ -53,13 +78,20 @@ class _EntryFormViewState extends State<EntryFormView>
     _friendsBox = Hive.box<FriendModel>('friends_box');
     _transBox = Hive.box<TransactionModel>('transactions_box');
     _tagsBox = Hive.box<String>('tags_box');
+    _personalBox = Hive.box<Map>('personal_expenses_box');
+
+    _pageController = PageController(initialPage: 0);
+    _friendsScrollCtrl = ScrollController();
+    _personalScrollCtrl = ScrollController();
+
+    _friendsScrollCtrl.addListener(_onScroll);
+    _personalScrollCtrl.addListener(_onScroll);
 
     _entryService = HisaabEntryService(
       friendsBox: _friendsBox,
       transBox: _transBox,
     );
 
-    // Default 3 tags agar pehli baar app run ho rahi ho
     if (_tagsBox.isEmpty) {
       _tagsBox.addAll(['Personal', 'Business', 'College']);
     }
@@ -67,20 +99,162 @@ class _EntryFormViewState extends State<EntryFormView>
     _stateData = EntryFormStateData(
       txType: widget.entryType == 2 ? 'liya' : 'diya',
       selectedTag: null,
-      selectedFriendKeys: {},
-      availableTags: _tagsBox.values.toList(), // Hive se permanently load
+      selectedFriendKey: null,
+      availableTags: _tagsBox.values.toList(),
     );
+  }
+
+  void _onScroll() {
+    final activeCtrl = _currentSlideIndex == 0
+        ? _friendsScrollCtrl
+        : _personalScrollCtrl;
+    if (!activeCtrl.hasClients) return;
+
+    if (activeCtrl.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_isBottomDockVisible) {
+        setState(() => _isBottomDockVisible = false);
+      }
+    } else if (activeCtrl.position.userScrollDirection ==
+        ScrollDirection.forward) {
+      if (!_isBottomDockVisible) {
+        setState(() => _isBottomDockVisible = true);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _friendsScrollCtrl.removeListener(_onScroll);
+    _personalScrollCtrl.removeListener(_onScroll);
+    _friendsScrollCtrl.dispose();
+    _personalScrollCtrl.dispose();
+    _pageController.dispose();
     _searchCtrl.dispose();
     _noteCtrl.dispose();
     _amountCtrl.dispose();
     _newFriendNameCtrl.dispose();
     _newFriendPhoneCtrl.dispose();
     _newFriendNoteCtrl.dispose();
+    _personalTitleCtrl.dispose();
+    _personalAmountCtrl.dispose();
     super.dispose();
+  }
+
+  IconData _getCategoryIcon(String cat) {
+    switch (cat.toLowerCase()) {
+      case 'chai':
+        return Icons.local_cafe_rounded;
+      case 'kirana':
+        return Icons.shopping_cart_rounded;
+      case 'khana':
+      case 'lunch':
+      case 'dinner':
+        return Icons.restaurant_rounded;
+      case 'medical':
+        return Icons.medical_services_rounded;
+      case 'icecream':
+      case 'treat':
+        return Icons.icecream_rounded;
+      default:
+        return Icons.account_balance_wallet_rounded;
+    }
+  }
+
+  Color _getCategoryColor(String cat) {
+    switch (cat.toLowerCase()) {
+      case 'chai':
+        return const Color(0xFFF59E0B);
+      case 'kirana':
+        return const Color(0xFF06B6D4);
+      case 'khana':
+      case 'lunch':
+      case 'dinner':
+        return const Color(0xFFF97316);
+      case 'medical':
+        return const Color(0xFF38BDF8);
+      case 'icecream':
+      case 'treat':
+        return const Color(0xFFFB923C);
+      default:
+        return const Color(0xFF10B981);
+    }
+  }
+
+  void _confirmDeletePersonalExpense(dynamic key, Map item) {
+    final title = item["title"] ?? "Kharcha";
+    final amount = item["amount"] ?? 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: borderCustom),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: denaRed, size: 20),
+            SizedBox(width: 8),
+            Text(
+              "Kharcha Delete Karein?",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Kya aap '$title' (-₹$amount) ko delete karna chahte hain?",
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _personalBox.delete(key);
+              AppToast.show(
+                context,
+                title: "'$title' delete ho gaya!",
+                type: ToastType.error,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: denaRed,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Delete",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _switchSlide(int index) {
+    if (_currentSlideIndex == index) return;
+    setState(() {
+      _currentSlideIndex = index;
+      _isBottomDockVisible = true;
+    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _handleAddNewFriend() {
@@ -102,8 +276,7 @@ class _EntryFormViewState extends State<EntryFormView>
     );
 
     setState(() {
-      _stateData.selectedFriendKeys.clear();
-      _stateData.selectedFriendKeys.add(key);
+      _stateData.selectedFriendKey = key;
       _newFriendNameCtrl.clear();
       _newFriendPhoneCtrl.clear();
       _newFriendNoteCtrl.clear();
@@ -118,7 +291,7 @@ class _EntryFormViewState extends State<EntryFormView>
     );
   }
 
-  void _handleSaveHisaab() {
+  void _handleSaveSingleFriendHisaab() {
     final int amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
       AppToast.show(
@@ -129,10 +302,10 @@ class _EntryFormViewState extends State<EntryFormView>
       return;
     }
 
-    if (_stateData.selectedFriendKeys.isEmpty) {
+    if (_stateData.selectedFriendKey == null) {
       AppToast.show(
         context,
-        title: "Kripya kam se kam ek dost chunein!",
+        title: "Kripya kisi ek dost ko chunein!",
         type: ToastType.warning,
       );
       return;
@@ -140,9 +313,9 @@ class _EntryFormViewState extends State<EntryFormView>
 
     final noteText = _noteCtrl.text.trim();
 
-    _entryService.saveTransaction(
-      selectedFriendKeys: _stateData.selectedFriendKeys,
-      totalAmount: amount,
+    _entryService.saveSingleFriendTransaction(
+      friendKey: _stateData.selectedFriendKey,
+      amount: amount,
       txType: _stateData.txType,
       note: noteText,
       paymentMode: _stateData.selectedPaymentMode,
@@ -160,7 +333,48 @@ class _EntryFormViewState extends State<EntryFormView>
     widget.onClose();
   }
 
-  void _showPaymentModeSheet() {
+  void _handleSavePersonalKharcha() {
+    final int amt = int.tryParse(_personalAmountCtrl.text.trim()) ?? 0;
+    final String title = _personalTitleCtrl.text.trim().isNotEmpty
+        ? _personalTitleCtrl.text.trim()
+        : _personalSelectedCat;
+
+    if (amt <= 0) {
+      AppToast.show(
+        context,
+        title: "Kripya valid amount likhein!",
+        type: ToastType.warning,
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final timeLabel =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+    _personalBox.add({
+      "title": title,
+      "sub": _personalSelectedCat,
+      "amount": amt,
+      "category": _personalSelectedCat,
+      "mode": _personalSelectedMode,
+      "time": timeLabel,
+      "timestamp": now.millisecondsSinceEpoch,
+    });
+
+    _personalTitleCtrl.clear();
+    _personalAmountCtrl.clear();
+    FocusScope.of(context).unfocus();
+
+    AppToast.show(
+      context,
+      title: "₹$amt ka personal kharcha note ho gaya!",
+      type: ToastType.success,
+    );
+    widget.onClose();
+  }
+
+  void _showPaymentModeSheet({required bool isPersonal}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: surfaceCard,
@@ -197,8 +411,10 @@ class _EntryFormViewState extends State<EntryFormView>
                 ),
                 const SizedBox(height: 10),
                 ..._paymentOptions.map((opt) {
-                  final isSelected =
-                      _stateData.selectedPaymentMode == opt['name'];
+                  final currentMode = isPersonal
+                      ? _personalSelectedMode
+                      : _stateData.selectedPaymentMode;
+                  final isSelected = currentMode == opt['name'];
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -227,10 +443,14 @@ class _EntryFormViewState extends State<EntryFormView>
                           )
                         : null,
                     onTap: () {
-                      setState(
-                        () => _stateData.selectedPaymentMode =
-                            opt['name'] as String,
-                      );
+                      setState(() {
+                        if (isPersonal) {
+                          _personalSelectedMode = opt['name'] as String;
+                        } else {
+                          _stateData.selectedPaymentMode =
+                              opt['name'] as String;
+                        }
+                      });
                       Navigator.pop(ctx);
                     },
                   );
@@ -243,6 +463,17 @@ class _EntryFormViewState extends State<EntryFormView>
     );
   }
 
+  String _formatDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final checkDate = DateTime(date.year, date.month, date.day);
+
+    if (checkDate == today) return "Today";
+    if (checkDate == yesterday) return "Yesterday";
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -251,7 +482,113 @@ class _EntryFormViewState extends State<EntryFormView>
       backgroundColor: bgOled,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: ValueListenableBuilder<Box<FriendModel>>(
+        child: Column(
+          children: [
+            EntryTopNavHeader(
+              activeTab: _currentSlideIndex,
+              onTabSwitch: _switchSlide,
+              onBack: widget.onClose,
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  PageView(
+                    controller: _pageController,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    onPageChanged: (idx) {
+                      setState(() {
+                        _currentSlideIndex = idx;
+                        _isBottomDockVisible = true;
+                      });
+                    },
+                    children: [
+                      _buildFriendsPageView(),
+                      _buildPersonalExpensePageView(),
+                    ],
+                  ),
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    bottom: _isBottomDockVisible ? -60 : 18,
+                    right: 18,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isBottomDockVisible = true),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.85),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: lenaGreen.withOpacity(0.8),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.keyboard_arrow_up_rounded,
+                            color: lenaGreen,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------
+  // TAB 0: DOST HISAAB PAGE (Now properly wrapped with Street BG)
+  // -------------------------------------------------------------
+  Widget _buildFriendsPageView() {
+    return Stack(
+      children: [
+        // 1. Street Lamp Rainy BG Image (45% Opacity)
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.45,
+            child: Image.asset(
+              'assets/images/friends_select_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const SizedBox.shrink(),
+            ),
+          ),
+        ),
+
+        // 2. Soft Dark Ambient Gradient
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.25),
+                  Colors.black.withOpacity(0.60),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 3. Main Dost Content
+        ValueListenableBuilder<Box<FriendModel>>(
           valueListenable: _friendsBox.listenable(),
           builder: (context, box, _) {
             final allFriends = box.values.toList();
@@ -300,20 +637,18 @@ class _EntryFormViewState extends State<EntryFormView>
             }
 
             final query = _searchCtrl.text.trim().toLowerCase();
-
             final List<MapEntry<dynamic, FriendModel>> filteredEntries = [];
+
             for (int i = 0; i < allFriends.length; i++) {
               final friend = allFriends[i];
               final key = allKeys[i];
 
               if (_stateData.activeFilter == 'lena' &&
-                  (friend.type != 'lena' || friend.balance <= 0)) {
+                  (friend.type != 'lena' || friend.balance <= 0))
                 continue;
-              }
               if (_stateData.activeFilter == 'dena' &&
-                  (friend.type != 'dena' || friend.balance <= 0)) {
+                  (friend.type != 'dena' || friend.balance <= 0))
                 continue;
-              }
 
               if (_stateData.activeFilter != 'all' &&
                   _stateData.activeFilter != 'lena' &&
@@ -334,14 +669,15 @@ class _EntryFormViewState extends State<EntryFormView>
               filteredEntries.add(MapEntry(key, friend));
             }
 
-            final selectedCount = _stateData.selectedFriendKeys.length;
             String activeFriendName = "Koi dost select karein";
             String activeFriendBalance = "Khata Chunein";
             bool isPositiveBalance = true;
+            final hasSelected = _stateData.selectedFriendKey != null;
 
-            if (selectedCount == 1) {
-              final singleKey = _stateData.selectedFriendKeys.first;
-              final FriendModel? f = _friendsBox.get(singleKey);
+            if (hasSelected) {
+              final FriendModel? f = _friendsBox.get(
+                _stateData.selectedFriendKey,
+              );
               if (f != null) {
                 activeFriendName = f.name;
                 final isLena = f.type == 'lena';
@@ -349,17 +685,10 @@ class _EntryFormViewState extends State<EntryFormView>
                 activeFriendBalance =
                     "${isLena ? '+₹' : '-₹'}${f.balance} ${isLena ? 'lena' : 'dena'}";
               }
-            } else if (selectedCount > 1) {
-              activeFriendName = "$selectedCount Dost Chune Hue";
-              activeFriendBalance = "Group Split";
             }
 
             return Column(
               children: [
-                EntryTopNavHeader(
-                  selectedCount: selectedCount,
-                  onBack: widget.onClose,
-                ),
                 EntrySearchBarAndFilters(
                   searchCtrl: _searchCtrl,
                   activeFilter: _stateData.activeFilter,
@@ -371,6 +700,7 @@ class _EntryFormViewState extends State<EntryFormView>
                 const SizedBox(height: 8),
                 Expanded(
                   child: ListView(
+                    controller: _friendsScrollCtrl,
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -390,11 +720,10 @@ class _EntryFormViewState extends State<EntryFormView>
                         tags: _stateData.availableTags,
                         onTagSelected: (tag) =>
                             setState(() => _stateData.selectedTag = tag),
-                        // PERMANENT HIVE SAVE FIX:
                         onCustomTagAdded: (newTag) {
                           setState(() {
                             if (!_tagsBox.values.contains(newTag)) {
-                              _tagsBox.add(newTag); // Local database me save
+                              _tagsBox.add(newTag);
                             }
                             _stateData.availableTags = _tagsBox.values.toList();
                             _stateData.selectedTag = newTag;
@@ -420,7 +749,7 @@ class _EntryFormViewState extends State<EntryFormView>
                           child: Center(
                             child: Text(
                               "Koi dost nahi mila",
-                              style: TextStyle(color: neutral500, fontSize: 12),
+                              style: TextStyle(color: neutral400, fontSize: 12),
                             ),
                           ),
                         )
@@ -428,8 +757,8 @@ class _EntryFormViewState extends State<EntryFormView>
                         ...filteredEntries.map((entry) {
                           final key = entry.key;
                           final friend = entry.value;
-                          final isSelected = _stateData.selectedFriendKeys
-                              .contains(key);
+                          final isSelected =
+                              _stateData.selectedFriendKey == key;
                           return SelectableFriendCardWidget(
                             friendKey: key,
                             friend: friend,
@@ -437,9 +766,9 @@ class _EntryFormViewState extends State<EntryFormView>
                             onTap: () {
                               setState(() {
                                 if (isSelected) {
-                                  _stateData.selectedFriendKeys.remove(key);
+                                  _stateData.selectedFriendKey = null;
                                 } else {
-                                  _stateData.selectedFriendKeys.add(key);
+                                  _stateData.selectedFriendKey = key;
                                 }
                               });
                             },
@@ -448,26 +777,678 @@ class _EntryFormViewState extends State<EntryFormView>
                     ],
                   ),
                 ),
-                EntryBottomDockWidget(
-                  activeFriendName: activeFriendName,
-                  activeBalance: activeFriendBalance,
-                  isPositive: isPositiveBalance,
-                  selectedCount: selectedCount,
-                  noteCtrl: _noteCtrl,
-                  amountCtrl: _amountCtrl,
-                  selectedPaymentMode: _stateData.selectedPaymentMode,
-                  txType: _stateData.txType,
-                  onPaymentModeTap: _showPaymentModeSheet,
-                  onTxTypeChanged: (type) =>
-                      setState(() => _stateData.txType = type),
-                  onSave: _handleSaveHisaab,
-                  onClosePage: widget.onClose,
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 240),
+                  crossFadeState: _isBottomDockVisible
+                      ? CrossFadeState.showFirst
+                      : CrossFadeState.showSecond,
+                  firstChild: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: EntryBottomDockWidget(
+                        activeFriendName: activeFriendName,
+                        activeBalance: activeFriendBalance,
+                        isPositive: isPositiveBalance,
+                        hasSelectedFriend: hasSelected,
+                        noteCtrl: _noteCtrl,
+                        amountCtrl: _amountCtrl,
+                        selectedPaymentMode: _stateData.selectedPaymentMode,
+                        txType: _stateData.txType,
+                        onPaymentModeTap: () =>
+                            _showPaymentModeSheet(isPersonal: false),
+                        onTxTypeChanged: (type) =>
+                            setState(() => _stateData.txType = type),
+                        onSave: _handleSaveSingleFriendHisaab,
+                        onClosePage: widget.onClose,
+                      ),
+                    ),
+                  ),
+                  secondChild: const SizedBox(
+                    width: double.infinity,
+                    height: 0,
+                  ),
                 ),
               ],
             );
           },
         ),
-      ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------
+  // TAB 1: PERSONAL KHARCHA PAGE (Clean Card + Right Aligned Amount)
+  // -------------------------------------------------------------
+  Widget _buildPersonalExpensePageView() {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.55,
+            child: Image.asset(
+              'assets/images/personal_kharcha_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.25),
+                  Colors.black.withOpacity(0.50),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Column(
+          children: [
+            Expanded(
+              child: ValueListenableBuilder<Box<Map>>(
+                valueListenable: _personalBox.listenable(),
+                builder: (context, pBox, _) {
+                  final keys = pBox.keys.toList().reversed.toList();
+                  final items = pBox.values.toList().reversed.toList();
+                  final int todayTotal = pBox.values.fold(
+                    0,
+                    (sum, e) => sum + ((e["amount"] as num?)?.toInt() ?? 0),
+                  );
+
+                  final Map<String, List<MapEntry<dynamic, Map>>>
+                  groupedExpenses = {};
+                  for (int i = 0; i < items.length; i++) {
+                    final item = items[i];
+                    final rawKey = keys[i];
+                    final ts =
+                        item["timestamp"] as int? ??
+                        DateTime.now().millisecondsSinceEpoch;
+                    final dateKey = _formatDateHeader(
+                      DateTime.fromMillisecondsSinceEpoch(ts),
+                    );
+                    groupedExpenses
+                        .putIfAbsent(dateKey, () => [])
+                        .add(MapEntry(rawKey, item));
+                  }
+
+                  return ListView(
+                    controller: _personalScrollCtrl,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    children: [
+                      // TOP CARD: AMOUNT ON THE RIGHT SIDE OF THE TEXT
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.38),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "KHUD KA KHARCHA",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.9,
+                              ),
+                            ),
+                            Text(
+                              "₹$todayTotal.00",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      if (items.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 36),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            "Abhi tak koi kharcha add nahi kiya gaya hai.\nNiche diye dock se turant add karein!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        )
+                      else
+                        ...groupedExpenses.entries.expand((entry) {
+                          final dateLabel = entry.key;
+                          final groupList = entry.value;
+
+                          return [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.40),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      dateLabel,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Container(
+                                      height: 1,
+                                      color: Colors.white.withOpacity(0.08),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ...groupList.map((entryItem) {
+                              final rawKey = entryItem.key;
+                              final item = entryItem.value;
+                              final cat =
+                                  item["category"]?.toString() ?? "Chai";
+                              final catColor = _getCategoryColor(cat);
+                              final catIcon = _getCategoryIcon(cat);
+
+                              return IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    SizedBox(
+                                      width: 44,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: Text(
+                                          item["time"] ?? "00:00",
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Column(
+                                      children: [
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: catColor.withOpacity(0.20),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: catColor.withOpacity(0.65),
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            catIcon,
+                                            size: 13,
+                                            color: catColor,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Container(
+                                            width: 1.5,
+                                            color: Colors.white.withOpacity(
+                                              0.12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onLongPress: () {
+                                          _confirmDeletePersonalExpense(
+                                            rawKey,
+                                            item,
+                                          );
+                                        },
+                                        child: Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 10,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(
+                                              0.35,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(
+                                                0.08,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      item["title"] ??
+                                                          "Kharcha",
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      item["sub"]?.isNotEmpty ==
+                                                              true
+                                                          ? item["sub"]
+                                                          : cat,
+                                                      style: const TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 10.5,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    "-₹${item['amount']}",
+                                                    style: const TextStyle(
+                                                      color: denaRed,
+                                                      fontSize: 13.5,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    item["mode"] ?? "UPI",
+                                                    style: const TextStyle(
+                                                      color: Colors.white38,
+                                                      fontSize: 9.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ];
+                        }),
+                    ],
+                  );
+                },
+              ),
+            ),
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 240),
+              crossFadeState: _isBottomDockVisible
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              firstChild: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.30),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withOpacity(0.12),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: 8,
+                            left: 2,
+                            right: 2,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    "Category: ",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                  Text(
+                                    _personalSelectedCat,
+                                    style: const TextStyle(
+                                      color: lenaGreen,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                "Wallet / $_personalSelectedMode",
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          height: 44,
+                          padding: const EdgeInsets.only(left: 12, right: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.40),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.10),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.edit_note_rounded,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _personalTitleCtrl,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: "Title (Chai, Kirana, Petrol, Lunch)...",
+                                    hintStyle: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 12,
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () =>
+                                    _showPaymentModeSheet(isPersonal: true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.15),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.account_balance_wallet_rounded,
+                                        color: lenaGreen,
+                                        size: 13,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _personalSelectedMode,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.white70,
+                                        size: 14,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: _personalCategories.map((cat) {
+                              final isSel = _personalSelectedCat == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: GestureDetector(
+                                  onTap: () => setState(
+                                    () => _personalSelectedCat = cat,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSel
+                                          ? const Color(0xFF0F291C)
+                                                .withOpacity(0.85)
+                                          : Colors.black.withOpacity(0.35),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isSel
+                                            ? lenaGreen.withOpacity(0.8)
+                                            : Colors.white.withOpacity(0.10),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      cat,
+                                      style: TextStyle(
+                                        color: isSel
+                                            ? const Color(0xFF34D399)
+                                            : Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: isSel
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.40),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.12),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Text(
+                                      "₹",
+                                      style: TextStyle(
+                                        color: lenaGreen,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _personalAmountCtrl,
+                                        keyboardType: TextInputType.number,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: "Amount",
+                                          hintStyle: TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 13,
+                                          ),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 48,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                  shape: const StadiumBorder(),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                  ),
+                                  elevation: 0,
+                                ),
+                                onPressed: _handleSavePersonalKharcha,
+                                child: const Row(
+                                  children: [
+                                    Text(
+                                      "Save",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.black,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: widget.onClose,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.40),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.12),
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              secondChild: const SizedBox(width: double.infinity, height: 0),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

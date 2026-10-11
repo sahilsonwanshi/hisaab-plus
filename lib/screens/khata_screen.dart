@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -25,9 +26,6 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   String _searchQuery = "";
 
   static const Color oledBg = Color(0xFF000000);
-  static const Color cardSurface = Color(0xFF131315);
-  static const Color cardSurfaceLight = Color(0xFF1C1C1F);
-  static const Color cardSurfaceElevated = Color(0xFF1E1E22);
   static const Color greenAccent = Color(0xFF00E676);
   static const Color greenPillBg = Color(0xFF0B291A);
   static const Color redAccent = Color(0xFFFF5252);
@@ -77,11 +75,10 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     );
   }
 
-  // Khata list me dost par long-press karne par direct delete / clear modal
   void _showKhataOptionsBottomSheet(dynamic key, FriendModel dost) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: cardSurfaceElevated,
+      backgroundColor: const Color(0xFF16161A),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -201,579 +198,636 @@ class _DostKhataScreenState extends State<DostKhataScreen>
 
     return Scaffold(
       backgroundColor: oledBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // =========================================================
-            // 1. FIXED STICKY TOP BAR
-            // =========================================================
-            Container(
-              color: oledBg,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(right: 14, left: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "HISAAB",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        SizedBox(width: 3),
-                        Text(
-                          "+",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: greenAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: cardSurface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.search_rounded,
-                            size: 18,
-                            color: textMuted,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              onChanged: (val) =>
-                                  setState(() => _searchQuery = val.trim()),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.5,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: "Search dost, khata...",
-                                hintStyle: TextStyle(
-                                  color: textMuted,
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              "|",
-                              style: TextStyle(
-                                color: textMutedDark,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.more_vert_rounded,
-                            size: 18,
-                            color: textMuted,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          // 1. Spiderman Background Image Layer
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.40,
+              child: Image.asset(
+                'assets/images/khata_screen_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
+          ),
 
-            // =========================================================
-            // 2. SCROLLABLE BODY WITH REFRESH INDICATOR
-            // =========================================================
-            Expanded(
-              child: ValueListenableBuilder<Box<FriendModel>>(
-                valueListenable: _friendsBox.listenable(),
-                builder: (context, box, _) {
-                  final allFriends = box.values.toList();
-                  final allKeys = box.keys.toList();
+          // 2. Ambient Gradient Tint for Contrast
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.30),
+                    Colors.black.withOpacity(0.65),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-                  int totalLena = 0;
-                  int totalDena = 0;
-                  int lenaCount = 0;
-                  int denaCount = 0;
-
-                  for (var f in allFriends) {
-                    if (f.type == 'lena' && f.balance > 0) {
-                      totalLena += f.balance;
-                      lenaCount++;
-                    } else if (f.type == 'dena' && f.balance > 0) {
-                      totalDena += f.balance;
-                      denaCount++;
-                    }
-                  }
-
-                  final int netBalance = totalLena - totalDena;
-                  final int combinedTotal = totalLena + totalDena;
-                  final double greenFrac = combinedTotal == 0
-                      ? 0.5
-                      : (totalLena / combinedTotal);
-                  final double redFrac = combinedTotal == 0
-                      ? 0.5
-                      : (totalDena / combinedTotal);
-
-                  // Filter Chips
-                  final List<Map<String, dynamic>> filterChips = [
-                    {
-                      "id": "Sabhi",
-                      "label": "Sabhi",
-                      "count": allFriends.length,
-                      "color": null,
-                      "isTag": false,
-                    },
-                    {
-                      "id": "Lena Hai",
-                      "label": "Lena Hai",
-                      "count": lenaCount,
-                      "color": greenAccent,
-                      "isTag": false,
-                    },
-                    {
-                      "id": "Dena Hai",
-                      "label": "Dena Hai",
-                      "count": denaCount,
-                      "color": redAccent,
-                      "isTag": false,
-                    },
-                  ];
-
-                  for (var tag in availableTags) {
-                    final count = allFriends
-                        .where(
-                          (d) =>
-                              d.desc.toLowerCase().contains(tag.toLowerCase()),
-                        )
-                        .length;
-                    if (count > 0) {
-                      filterChips.add({
-                        "id": tag,
-                        "label": tag,
-                        "count": count,
-                        "color": const Color(0xFF38BDF8),
-                        "isTag": true,
-                      });
-                    }
-                  }
-
-                  final List<MapEntry<dynamic, FriendModel>> filteredList = [];
-                  for (int i = 0; i < allFriends.length; i++) {
-                    final friend = allFriends[i];
-                    final key = allKeys[i];
-
-                    final nameMatches =
-                        friend.name.toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        ) ||
-                        friend.desc.toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        );
-                    if (!nameMatches) continue;
-
-                    if (_activeFilter == "Lena Hai" &&
-                        (friend.type != 'lena' || friend.balance <= 0)) {
-                      continue;
-                    }
-                    if (_activeFilter == "Dena Hai" &&
-                        (friend.type != 'dena' || friend.balance <= 0)) {
-                      continue;
-                    }
-
-                    if (_activeFilter != "Sabhi" &&
-                        _activeFilter != "Lena Hai" &&
-                        _activeFilter != "Dena Hai") {
-                      if (!friend.desc.toLowerCase().contains(
-                        _activeFilter.toLowerCase(),
-                      )) {
-                        continue;
-                      }
-                    }
-
-                    filteredList.add(MapEntry(key, friend));
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: _onRefresh,
-                    color: greenAccent,
-                    backgroundColor: cardSurfaceElevated,
-                    displacement: 20,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Net Ledger Ring Card
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
-                            decoration: BoxDecoration(
-                              color: cardSurface,
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.04),
+          // 3. Main Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Fixed Bar (Transparent Glass Look)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(right: 14, left: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "HISAAB",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: 1.1,
                               ),
                             ),
-                            child: Column(
-                              children: [
-                                Row(
+                            SizedBox(width: 3),
+                            Text(
+                              "+",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: greenAccent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.38),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.12),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.search_rounded,
+                                size: 18,
+                                color: textMuted,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  onChanged: (val) =>
+                                      setState(() => _searchQuery = val.trim()),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.5,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: "Search dost, khata...",
+                                    hintStyle: TextStyle(
+                                      color: textMuted,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              if (_searchQuery.isNotEmpty)
+                                GestureDetector(
+                                  onTap: () =>
+                                      setState(() => _searchQuery = ""),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 16,
+                                    color: textMuted,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Scrollable Body
+                Expanded(
+                  child: ValueListenableBuilder<Box<FriendModel>>(
+                    valueListenable: _friendsBox.listenable(),
+                    builder: (context, box, _) {
+                      final allFriends = box.values.toList();
+                      final allKeys = box.keys.toList();
+
+                      int totalLena = 0;
+                      int totalDena = 0;
+                      int lenaCount = 0;
+                      int denaCount = 0;
+
+                      for (var f in allFriends) {
+                        if (f.type == 'lena' && f.balance > 0) {
+                          totalLena += f.balance;
+                          lenaCount++;
+                        } else if (f.type == 'dena' && f.balance > 0) {
+                          totalDena += f.balance;
+                          denaCount++;
+                        }
+                      }
+
+                      final int netBalance = totalLena - totalDena;
+                      final int combinedTotal = totalLena + totalDena;
+                      final double greenFrac = combinedTotal == 0
+                          ? 0.5
+                          : (totalLena / combinedTotal);
+                      final double redFrac = combinedTotal == 0
+                          ? 0.5
+                          : (totalDena / combinedTotal);
+
+                      final List<Map<String, dynamic>> filterChips = [
+                        {
+                          "id": "Sabhi",
+                          "label": "Sabhi",
+                          "count": allFriends.length,
+                          "color": null,
+                          "isTag": false,
+                        },
+                        {
+                          "id": "Lena Hai",
+                          "label": "Lena Hai",
+                          "count": lenaCount,
+                          "color": greenAccent,
+                          "isTag": false,
+                        },
+                        {
+                          "id": "Dena Hai",
+                          "label": "Dena Hai",
+                          "count": denaCount,
+                          "color": redAccent,
+                          "isTag": false,
+                        },
+                      ];
+
+                      for (var tag in availableTags) {
+                        final count = allFriends
+                            .where(
+                              (d) => d.desc.toLowerCase().contains(
+                                tag.toLowerCase(),
+                              ),
+                            )
+                            .length;
+                        if (count > 0) {
+                          filterChips.add({
+                            "id": tag,
+                            "label": tag,
+                            "count": count,
+                            "color": const Color(0xFF38BDF8),
+                            "isTag": true,
+                          });
+                        }
+                      }
+
+                      final List<MapEntry<dynamic, FriendModel>> filteredList =
+                          [];
+                      for (int i = 0; i < allFriends.length; i++) {
+                        final friend = allFriends[i];
+                        final key = allKeys[i];
+
+                        final nameMatches =
+                            friend.name.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ||
+                            friend.desc.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            );
+                        if (!nameMatches) continue;
+
+                        if (_activeFilter == "Lena Hai" &&
+                            (friend.type != 'lena' || friend.balance <= 0)) {
+                          continue;
+                        }
+                        if (_activeFilter == "Dena Hai" &&
+                            (friend.type != 'dena' || friend.balance <= 0)) {
+                          continue;
+                        }
+
+                        if (_activeFilter != "Sabhi" &&
+                            _activeFilter != "Lena Hai" &&
+                            _activeFilter != "Dena Hai") {
+                          if (!friend.desc.toLowerCase().contains(
+                            _activeFilter.toLowerCase(),
+                          )) {
+                            continue;
+                          }
+                        }
+
+                        filteredList.add(MapEntry(key, friend));
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: _onRefresh,
+                        color: greenAccent,
+                        backgroundColor: const Color(0xFF1C1C1F),
+                        displacement: 20,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Glassy Net Ledger Card
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  20,
+                                  18,
+                                  18,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.38),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.12),
+                                  ),
+                                ),
+                                child: Column(
                                   children: [
-                                    Container(
-                                      width: 96,
-                                      height: 96,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: const Color(0xFF151518),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.04,
-                                          ),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CustomPaint(
-                                            size: const Size(96, 96),
-                                            painter: _NetRadialChartPainter(
-                                              greenFraction: greenFrac,
-                                              redFraction: redFrac,
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 96,
+                                          height: 96,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.black.withOpacity(
+                                              0.4,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(
+                                                0.08,
+                                              ),
+                                              width: 1,
                                             ),
                                           ),
-                                          Column(
-                                            mainAxisSize: MainAxisSize.min,
+                                          child: Stack(
+                                            alignment: Alignment.center,
                                             children: [
-                                              const Text(
-                                                "NET",
-                                                style: TextStyle(
-                                                  color: Color(0xFF888890),
-                                                  fontSize: 9.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 0.8,
+                                              CustomPaint(
+                                                size: const Size(96, 96),
+                                                painter: _NetRadialChartPainter(
+                                                  greenFraction: greenFrac,
+                                                  redFraction: redFrac,
                                                 ),
                                               ),
-                                              const SizedBox(height: 2),
+                                              Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Text(
+                                                    "NET",
+                                                    style: TextStyle(
+                                                      color: Color(0xFF888890),
+                                                      fontSize: 9.5,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 0.8,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    "${netBalance >= 0 ? '+₹' : '-₹'}${netBalance.abs()}",
+                                                    style: TextStyle(
+                                                      color: netBalance >= 0
+                                                          ? greenAccent
+                                                          : redAccent,
+                                                      fontSize: 15.5,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 18),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    width: 7,
+                                                    height: 7,
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          color: greenAccent,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  const Text(
+                                                    "Lena Hai",
+                                                    style: TextStyle(
+                                                      color: textMuted,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: greenPillBg
+                                                          .withOpacity(0.8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      "$lenaCount log",
+                                                      style: const TextStyle(
+                                                        color: greenAccent,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 3),
                                               Text(
-                                                "${netBalance >= 0 ? '+₹' : '-₹'}${netBalance.abs()}",
-                                                style: TextStyle(
-                                                  color: netBalance >= 0
-                                                      ? greenAccent
-                                                      : redAccent,
-                                                  fontSize: 15.5,
+                                                "₹$totalLena.00",
+                                                style: const TextStyle(
+                                                  color: greenAccent,
+                                                  fontSize: 19,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    width: 7,
+                                                    height: 7,
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          color: redAccent,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  const Text(
+                                                    "Dena Hai",
+                                                    style: TextStyle(
+                                                      color: textMuted,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: redPillBg
+                                                          .withOpacity(0.8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      "$denaCount log",
+                                                      style: const TextStyle(
+                                                        color: redAccent,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                "₹$totalDena.00",
+                                                style: const TextStyle(
+                                                  color: redAccent,
+                                                  fontSize: 19,
                                                   fontWeight: FontWeight.w900,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 18),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: const BoxDecoration(
-                                                  color: greenAccent,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              const Text(
-                                                "Lena Hai",
-                                                style: TextStyle(
-                                                  color: textMuted,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              const Spacer(),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: greenPillBg,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  "$lenaCount log",
-                                                  style: const TextStyle(
-                                                    color: greenAccent,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            "₹$totalLena.00",
-                                            style: const TextStyle(
-                                              color: greenAccent,
-                                              fontSize: 19,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: const BoxDecoration(
-                                                  color: redAccent,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              const Text(
-                                                "Dena Hai",
-                                                style: TextStyle(
-                                                  color: textMuted,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              const Spacer(),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: redPillBg,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  "$denaCount log",
-                                                  style: const TextStyle(
-                                                    color: redAccent,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            "₹$totalDena.00",
-                                            style: const TextStyle(
-                                              color: redAccent,
-                                              fontSize: 19,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 22),
-                                Row(
-                                  children: [
-                                    Container(
-                                      height: 44,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: cardSurfaceLight,
-                                        borderRadius: BorderRadius.circular(22),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.credit_card_outlined,
-                                            color: textMuted,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            "${allFriends.length} Dost",
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    InkWell(
-                                      onTap: _openNayaKhata,
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: Container(
-                                        height: 44,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
+                                      ],
+                                    ),
+                                    const SizedBox(height: 18),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          height: 42,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(
+                                              0.35,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              22,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(
+                                                0.08,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.credit_card_outlined,
+                                                color: textMuted,
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "${allFriends.length} Dost",
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        InkWell(
+                                          onTap: _openNayaKhata,
                                           borderRadius: BorderRadius.circular(
                                             24,
                                           ),
-                                        ),
-                                        child: const Row(
-                                          children: [
-                                            Icon(
-                                              Icons.person_add_alt_1_rounded,
-                                              size: 16,
-                                              color: Colors.black,
+                                          child: Container(
+                                            height: 42,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
                                             ),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              "+ Naya Khata",
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                              ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
                                             ),
-                                          ],
+                                            child: const Row(
+                                              children: [
+                                                Icon(
+                                                  Icons
+                                                      .person_add_alt_1_rounded,
+                                                  size: 16,
+                                                  color: Colors.black,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  "+ Naya Khata",
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
 
-                          const SizedBox(height: 18),
+                              const SizedBox(height: 18),
 
-                          // Category Filter Chips
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            child: Row(
-                              children: filterChips.map((chip) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: _buildFilterChip(
-                                    id: chip["id"] as String,
-                                    label: chip["label"] as String,
-                                    count: chip["count"] as int,
-                                    dotColor: chip["color"] as Color?,
-                                    isTag: chip["isTag"] as bool,
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Section Title
-                          const Text(
-                            "Active Dost",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Active Dost Ledger List
-                          if (filteredList.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40),
-                              child: Center(
-                                child: Text(
-                                  "Koi dost nahi mila",
-                                  style: TextStyle(
-                                    color: textMuted,
-                                    fontSize: 13,
-                                  ),
+                              // Filter Pills
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: Row(
+                                  children: filterChips.map((chip) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: _buildFilterChip(
+                                        id: chip["id"] as String,
+                                        label: chip["label"] as String,
+                                        count: chip["count"] as int,
+                                        dotColor: chip["color"] as Color?,
+                                        isTag: chip["isTag"] as bool,
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
                               ),
-                            )
-                          else
-                            ...filteredList.map((entry) {
-                              final key = entry.key;
-                              final dost = entry.value;
-                              final isLena = dost.type == 'lena';
-                              final isSettled =
-                                  dost.balance == 0 || dost.type == 'settled';
 
-                              String status;
-                              if (isSettled) {
-                                status = "₹0 chukta";
-                              } else if (isLena) {
-                                status = "+₹${dost.balance} lena";
-                              } else {
-                                status = "-₹${dost.balance} dena";
-                              }
+                              const SizedBox(height: 22),
 
-                              return _buildDostTile(
-                                initials: _getInitials(dost.name),
-                                name: dost.name,
-                                desc: dost.desc.isNotEmpty
-                                    ? dost.desc
-                                    : "Khata",
-                                time: dost.lastDate.isNotEmpty
-                                    ? dost.lastDate
-                                    : "Aaj",
-                                amount: "${dost.balance}.00",
-                                status: status,
-                                isLena: isLena,
-                                isSettled: isSettled,
-                                onTap: () => _openChat(key, dost),
-                                onLongPress: () =>
-                                    _showKhataOptionsBottomSheet(key, dost),
-                              );
-                            }),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+                              const Text(
+                                "Active Dost",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              if (filteredList.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 40),
+                                  child: Center(
+                                    child: Text(
+                                      "Koi dost nahi mila",
+                                      style: TextStyle(
+                                        color: textMuted,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...filteredList.map((entry) {
+                                  final key = entry.key;
+                                  final dost = entry.value;
+                                  final isLena = dost.type == 'lena';
+                                  final isSettled =
+                                      dost.balance == 0 ||
+                                      dost.type == 'settled';
+
+                                  String status;
+                                  if (isSettled) {
+                                    status = "₹0 chukta";
+                                  } else if (isLena) {
+                                    status = "+₹${dost.balance} lena";
+                                  } else {
+                                    status = "-₹${dost.balance} dena";
+                                  }
+
+                                  return _buildDostTile(
+                                    initials: _getInitials(dost.name),
+                                    name: dost.name,
+                                    desc: dost.desc.isNotEmpty
+                                        ? dost.desc
+                                        : "Khata",
+                                    time: dost.lastDate.isNotEmpty
+                                        ? dost.lastDate
+                                        : "Aaj",
+                                    amount: "${dost.balance}.00",
+                                    status: status,
+                                    isLena: isLena,
+                                    isSettled: isSettled,
+                                    onTap: () => _openChat(key, dost),
+                                    onLongPress: () =>
+                                        _showKhataOptionsBottomSheet(key, dost),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -793,15 +847,17 @@ class _DostKhataScreenState extends State<DostKhataScreen>
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isTag ? const Color(0xFF0369A1) : const Color(0xFF222228))
-              : (isTag ? const Color(0xFF0C1929) : cardSurface),
+              ? Colors.white
+              : (isTag
+                    ? const Color(0xFF0C1929).withOpacity(0.65)
+                    : Colors.black.withOpacity(0.35)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? (isTag ? const Color(0xFF38BDF8) : Colors.white24)
+                ? Colors.white
                 : (isTag
-                      ? const Color(0xFF0284C7).withValues(alpha: 0.4)
-                      : Colors.white.withValues(alpha: 0.04)),
+                      ? const Color(0xFF0284C7).withOpacity(0.4)
+                      : Colors.white.withOpacity(0.10)),
           ),
         ),
         child: Row(
@@ -811,7 +867,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
               Icon(
                 Icons.tag_rounded,
                 size: 12,
-                color: isSelected ? Colors.white : const Color(0xFF38BDF8),
+                color: isSelected ? Colors.black : const Color(0xFF38BDF8),
               ),
               const SizedBox(width: 4),
             ] else if (dotColor != null) ...[
@@ -819,7 +875,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: dotColor,
+                  color: isSelected ? Colors.black : dotColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -829,7 +885,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                  color: greenAccent,
+                  color: Colors.black,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -839,7 +895,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
               label,
               style: TextStyle(
                 color: isSelected
-                    ? Colors.white
+                    ? Colors.black
                     : (isTag ? const Color(0xFF38BDF8) : textMuted),
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -849,7 +905,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
             Text(
               "$count",
               style: TextStyle(
-                color: isSelected ? Colors.white70 : textMutedDark,
+                color: isSelected ? Colors.black87 : textMutedDark,
                 fontSize: 11.5,
                 fontWeight: FontWeight.bold,
               ),
@@ -879,9 +935,9 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: cardSurface,
+        color: Colors.black.withOpacity(0.35),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -896,9 +952,10 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFF1E1E22),
+                    color: Colors.white.withOpacity(0.08),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
                   ),
                   child: Center(
                     child: Text(
@@ -981,7 +1038,7 @@ class _NetRadialChartPainter extends CustomPainter {
     const strokeWidth = 8.0;
 
     final trackPaint = Paint()
-      ..color = const Color(0xFF1B1B20)
+      ..color = Colors.white.withOpacity(0.08)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..isAntiAlias = true;

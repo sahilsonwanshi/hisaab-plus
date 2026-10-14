@@ -174,7 +174,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       onOpenEntry: _openQuickEntry,
                     ),
                     const DostKhataScreen(),
-                    const ProfileScreen(),
+                    ProfileScreen(
+                      onGoToHome: () => _onTabSelected(0),
+                    ),
                   ],
                 ),
               ),

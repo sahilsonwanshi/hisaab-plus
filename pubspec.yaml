@@ -1,5 +1,5 @@
-name: flutter_application_1
-description: "A new Flutter project."
+name: hisaab_plus
+description: "Hisaab+ Personal Finance & Peer Ledger App."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -41,6 +41,10 @@ dependencies:
   file_picker: ^13.1.0
   share_plus: ^13.3.0
   path_provider: ^2.1.2 
+  google_sign_in: ^7.2.0
+  googleapis: ^17.0.0
+  http: ^1.6.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

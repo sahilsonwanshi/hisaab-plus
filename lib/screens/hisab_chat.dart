@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/friend_model.dart';
+import '../models/transaction_model.dart';
 import '../services/hisaab_entry_service.dart';
+import '../services/pdf_statement_service.dart';
 import '../widgets/custom_toast.dart';
+import '../theme/app_colors.dart';
 
 class HisabChatScreen extends StatefulWidget {
   final dynamic friendKey;
@@ -26,7 +33,6 @@ class HisabChatScreen extends StatefulWidget {
 class _HisabChatScreenState extends State<HisabChatScreen> {
   static const Color oledBg = Color(0xFF000000);
   static const Color surfaceCard = Color(0xFF141416);
-  static const Color surfaceSecondary = Color(0xFF18181B);
   static const Color surfaceHighlight = Color(0xFF202024);
   static const Color borderCustom = Color(0xFF242429);
 
@@ -36,6 +42,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
   static const Color denaRedLight = Color(0xFFFB7185);
 
   bool _isDetailsExpanded = false;
+  bool _isBottomDockVisible = true;
   int _entryType = 0; // 0: Diya, 1: Liya
   String _selectedPaymentMode = "UPI";
   final TextEditingController _amountController = TextEditingController();
@@ -43,20 +50,73 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   late Box<FriendModel> _friendsBox;
+  late Box<TransactionModel> _transBox;
   late HisaabEntryService _entryService;
 
   @override
   void initState() {
     super.initState();
     _friendsBox = Hive.box<FriendModel>('friends_box');
+    _transBox = Hive.box<TransactionModel>('transactions_box');
     _entryService = HisaabEntryService(
       friendsBox: _friendsBox,
-      transBox: Hive.box('transactions_box'),
+      transBox: _transBox,
     );
+    _scrollController.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToNewestChat();
+    });
+  }
+
+  // Auto-scroll to the newest chat entries smoothly on screen open
+  void _scrollToNewestChat() {
+    if (!_scrollController.hasClients) return;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    if (maxExtent <= 0) return;
+
+    if (maxExtent > 250) {
+      _scrollController.jumpTo(maxExtent - 120);
+    }
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+
+    Future.delayed(const Duration(milliseconds: 80), () {
+      if (mounted && _scrollController.hasClients) {
+        if (_scrollController.offset <
+            _scrollController.position.maxScrollExtent) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+          );
+        }
+      }
+    });
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.reverse) {
+      if (_isBottomDockVisible) {
+        setState(() => _isBottomDockVisible = false);
+      }
+    } else if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.forward) {
+      if (!_isBottomDockVisible) {
+        setState(() => _isBottomDockVisible = true);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _amountController.dispose();
     _noteController.dispose();
     _scrollController.dispose();
@@ -76,45 +136,22 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
     return null;
   }
 
-  // 1. Single entry delete + balance auto-adjustment
-  void _deleteSingleEntry(FriendModel friend, Map<dynamic, dynamic> targetTx) {
-    final int amount = (targetTx["amount"] as num?)?.toInt() ?? 0;
-    final String type = targetTx["type"] ?? "diya";
-
-    setState(() {
-      friend.history.remove(targetTx);
-
-      if (type == "diya") {
-        friend.balance -= amount;
-      } else if (type == "liya") {
-        friend.balance += amount;
-      }
-
-      if (friend.balance > 0) {
-        friend.type = "lena";
-      } else if (friend.balance < 0) {
-        friend.type = "dena";
-      } else {
-        friend.balance = 0;
-        friend.type = "settled";
-      }
-
-      if (friend.history.isNotEmpty) {
-        friend.lastMessage = friend.history.last["title"] ?? "";
-        friend.lastDate = friend.history.last["date"] ?? "";
-      } else {
-        friend.lastMessage = "Khata ready";
-        friend.lastDate = "";
-      }
-    });
-
-    friend.save();
-
-    AppToast.show(
-      context,
-      title: "'${targetTx['title']}' entry delete ho gayi!",
-      type: ToastType.error,
+  // 1. Single entry delete + balance auto-adjustment & transactions_box sync
+  Future<void> _deleteSingleEntry(
+      FriendModel friend, Map<dynamic, dynamic> targetTx) async {
+    await _entryService.deleteSingleFriendTransaction(
+      friend: friend,
+      targetTx: targetTx,
     );
+
+    if (mounted) {
+      setState(() {});
+      AppToast.show(
+        context,
+        title: "'${targetTx['title'] ?? 'Entry'}' delete ho gayi!",
+        type: ToastType.error,
+      );
+    }
   }
 
   // 2. Long Press Entry Delete Dialog
@@ -124,48 +161,54 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceHighlight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(Icons.delete_forever_rounded, color: denaRed, size: 22),
-            SizedBox(width: 8),
-            Text(
-              "Entry Delete Karein?",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      builder: (ctx) {
+        final colors = context.colors;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: colors.border),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.delete_forever_rounded, color: colors.redText, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                "Entry Delete Karein?",
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            "Kya aap '$title' (₹$amount) ko delete karna chahte hain? Khata balance se ye auto-adjust ho jayega.",
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text("Cancel", style: TextStyle(color: colors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _deleteSingleEntry(friend, tx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: colors.redAccent),
+              child: const Text(
+                "Delete",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
-        ),
-        content: Text(
-          "Kya aap '$title' (₹$amount) ko delete karna chahte hain? Khata balance se ye auto-adjust ho jayega.",
-          style: const TextStyle(color: Color(0xFFA3A3A3), fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _deleteSingleEntry(friend, tx);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: denaRed),
-            child: const Text(
-              "Delete",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -173,121 +216,1235 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
   void _clearChatHistory(FriendModel friend) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceHighlight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(
-              Icons.cleaning_services_rounded,
-              color: Colors.amber,
-              size: 22,
+      builder: (ctx) {
+        final colors = context.colors;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: colors.border),
+          ),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.cleaning_services_rounded,
+                color: Colors.amber,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Clear Chat?",
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            "Kya aap '${friend.name}' ki puri statement history hatana chahte hain? Net balance ₹0 ho jayega.",
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text("Cancel", style: TextStyle(color: colors.textMuted)),
             ),
-            SizedBox(width: 8),
-            Text(
-              "Clear Chat?",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _entryService.clearFriendHistory(friend);
+                if (mounted) {
+                  setState(() {});
+                  AppToast.show(
+                    context,
+                    title: "Puri chat clear kar di gayi!",
+                    type: ToastType.warning,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade800,
+              ),
+              child: const Text(
+                "Clear All",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
-        ),
-        content: Text(
-          "Kya aap '${friend.name}' ki puri statement history hatana chahte hain? Net balance ₹0 ho jayega.",
-          style: const TextStyle(color: Color(0xFFA3A3A3), fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+        );
+      },
+    );
+  }
+
+  // 4. Friend Khata Delete Karna (With full transBox cleanup)
+  void _confirmDeleteFriend(FriendModel friend) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final colors = context.colors;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: colors.border),
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                friend.history.clear();
-                friend.balance = 0;
-                friend.type = "settled";
-                friend.lastMessage = "Chat cleared";
-                friend.lastDate = "Aaj";
-              });
-              friend.save();
-              Navigator.pop(ctx);
-              AppToast.show(
-                context,
-                title: "Puri chat clear kar di gayi!",
-                type: ToastType.warning,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber.shade800,
+          title: Row(
+            children: [
+              Icon(Icons.delete_forever_rounded, color: colors.redText, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                "Khata Delete Karein?",
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            "Kya aap sach me '${friend.name}' ka khata aur sare statement permanent delete karna chahte hain?",
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text("Cancel", style: TextStyle(color: colors.textMuted)),
             ),
-            child: const Text(
-              "Clear All",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _entryService.clearFriendHistory(friend);
+                await friend.delete();
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  AppToast.show(
+                    context,
+                    title: "${friend.name} ka khata delete ho gaya!",
+                    type: ToastType.error,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: colors.redAccent),
+              child: const Text(
+                "Delete Khata",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Date parsing helper for transactions in history
+  DateTime _extractEntryDate(Map<dynamic, dynamic> tx) {
+    if (tx["timestamp"] is int) {
+      return DateTime.fromMillisecondsSinceEpoch(tx["timestamp"] as int);
+    }
+    final transKey = tx["transKey"];
+    if (transKey != null && _transBox.containsKey(transKey)) {
+      final trans = _transBox.get(transKey);
+      if (trans != null) {
+        return trans.date;
+      }
+    }
+    final raw = tx["date"]?.toString() ?? "";
+    final iso = DateTime.tryParse(raw);
+    if (iso != null) return iso;
+
+    try {
+      final parts = raw.split(" ");
+      if (parts.isNotEmpty && parts[0].contains("/")) {
+        final dParts = parts[0].split("/");
+        final day = int.parse(dParts[0]);
+        final month = int.parse(dParts[1]);
+        final now = DateTime.now();
+        int hour = 0;
+        int min = 0;
+        if (parts.length > 1 && parts[1].contains(":")) {
+          final tParts = parts[1].split(":");
+          hour = int.parse(tParts[0]);
+          min = int.parse(tParts[1]);
+        }
+        return DateTime(now.year, month, day, hour, min);
+      }
+    } catch (_) {}
+
+    return DateTime.now();
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return "";
+  }
+
+  // Generates a clean, professional accounting statement without emojis
+  String _generateProfessionalStatement({
+    required FriendModel friend,
+    required List<Map<dynamic, dynamic>> filteredList,
+    required String periodLabel,
+  }) {
+    int totalDiya = 0;
+    int totalLiya = 0;
+
+    for (var tx in filteredList) {
+      final amt = (tx["amount"] as num?)?.toInt() ?? 0;
+      if (tx["type"] == "diya") {
+        totalDiya += amt;
+      } else if (tx["type"] == "liya") {
+        totalLiya += amt;
+      }
+    }
+
+    final int netBalance = totalDiya - totalLiya;
+    final String netStatus;
+    if (netBalance > 0) {
+      netStatus = "Rs. $netBalance (To Receive / Lena)";
+    } else if (netBalance < 0) {
+      netStatus = "Rs. ${netBalance.abs()} (To Pay / Dena)";
+    } else {
+      netStatus = "Rs. 0 (Settled / Barabar)";
+    }
+
+    final now = DateTime.now();
+    final generatedOn =
+        "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} "
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln("----------------------------------------");
+    buffer.writeln("           HISAAB STATEMENT            ");
+    buffer.writeln("----------------------------------------");
+    buffer.writeln("Name      : ${friend.name}");
+    if (friend.phone.trim().isNotEmpty) {
+      buffer.writeln("Phone     : ${friend.phone.trim()}");
+    }
+    buffer.writeln("Period    : $periodLabel");
+    buffer.writeln("Date      : $generatedOn");
+    buffer.writeln("----------------------------------------");
+    buffer.writeln("SUMMARY:");
+    buffer.writeln("Total Given (Diya)    : Rs. $totalDiya");
+    buffer.writeln("Total Received (Liya) : Rs. $totalLiya");
+    buffer.writeln("Net Balance           : $netStatus");
+    buffer.writeln("----------------------------------------");
+    buffer.writeln("TRANSACTIONS (${filteredList.length} Entries):");
+    buffer.writeln("----------------------------------------");
+
+    if (filteredList.isEmpty) {
+      buffer.writeln("Koi entry nahi mili.");
+    } else {
+      for (int i = 0; i < filteredList.length; i++) {
+        final tx = filteredList[i];
+        final isDiya = tx["type"] == "diya";
+        final amt = tx["amount"] ?? 0;
+        final title = (tx["title"] ?? "Hisaab").toString().trim();
+        final mode = (tx["mode"] ?? "UPI").toString().trim();
+        final date = (tx["date"] ?? "").toString().trim();
+        final sign = isDiya ? "(+)" : "(-)";
+        final typeStr = isDiya ? "Diya" : "Liya";
+
+        buffer.writeln("${i + 1}. $date | Rs. $amt $sign [$typeStr]");
+        if (title.isNotEmpty && title.toLowerCase() != "hisaab") {
+          buffer.writeln("   Note: $title");
+        }
+        buffer.writeln("   Mode: $mode");
+        if (i < filteredList.length - 1) {
+          buffer.writeln(". . . . . . . . . . . . . . . . . . . .");
+        }
+      }
+    }
+
+    buffer.writeln("----------------------------------------");
+    buffer.writeln("Shared via Hisaab+");
+    buffer.writeln("----------------------------------------");
+
+    return buffer.toString();
+  }
+
+  // 5. WhatsApp / Share Hisaab with Date Range Filter & Professional Format
+  void _shareHisaabOnWhatsApp(FriendModel friend) {
+    String selectedFilter = "all"; // all, this_month, last_month, last_30_days, custom
+    DateTimeRange? customRange;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final now = DateTime.now();
+
+            // Filter history based on selectedFilter
+            final List<Map<dynamic, dynamic>> filteredHistory =
+                friend.history.where((tx) {
+              final d = _extractEntryDate(tx);
+              if (selectedFilter == "this_month") {
+                return d.year == now.year && d.month == now.month;
+              } else if (selectedFilter == "custom" && customRange != null) {
+                final start = DateTime(
+                  customRange!.start.year,
+                  customRange!.start.month,
+                  customRange!.start.day,
+                );
+                final end = DateTime(
+                  customRange!.end.year,
+                  customRange!.end.month,
+                  customRange!.end.day,
+                  23,
+                  59,
+                  59,
+                );
+                return (d.isAfter(start) || d.isAtSameMomentAs(start)) &&
+                    (d.isBefore(end) || d.isAtSameMomentAs(end));
+              }
+              return true;
+            }).toList();
+
+            // Calculate totals for preview
+            int totalDiya = 0;
+            int totalLiya = 0;
+            for (var tx in filteredHistory) {
+              final amt = (tx["amount"] as num?)?.toInt() ?? 0;
+              if (tx["type"] == "diya") {
+                totalDiya += amt;
+              } else if (tx["type"] == "liya") {
+                totalLiya += amt;
+              }
+            }
+            final netBalance = totalDiya - totalLiya;
+
+            String periodLabel = "All Time (Sabhi Len Den)";
+            if (selectedFilter == "this_month") {
+              periodLabel = "${_getMonthName(now.month)} ${now.year}";
+            } else if (selectedFilter == "custom" && customRange != null) {
+              periodLabel =
+                  "${customRange!.start.day}/${customRange!.start.month}/${customRange!.start.year} to ${customRange!.end.day}/${customRange!.end.month}/${customRange!.end.year}";
+            }
+
+            final bottomPadding = MediaQuery.of(sheetCtx).viewInsets.bottom;
+            final colors = context.colors;
+
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomPadding),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: colors.border, width: 1.5),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Share Hisaab Statement",
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              friend.name,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF25D366)
+                                .withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.share_rounded,
+                            color: Color(0xFF25D366),
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Filter Selection Label
+                    Text(
+                      "Select Date Range",
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Filter Chips (Scrollable horizontal row)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _buildShareFilterChip(
+                            colors: colors,
+                            label: "Sabhi (All)",
+                            isSelected: selectedFilter == "all",
+                            onTap: () =>
+                                setModalState(() => selectedFilter = "all"),
+                          ),
+                          _buildShareFilterChip(
+                            colors: colors,
+                            label: "Iss Mahine",
+                            isSelected: selectedFilter == "this_month",
+                            onTap: () => setModalState(
+                              () => selectedFilter = "this_month",
+                            ),
+                          ),
+                          _buildShareFilterChip(
+                            colors: colors,
+                            label: customRange != null
+                                ? "${customRange!.start.day}/${customRange!.start.month} - ${customRange!.end.day}/${customRange!.end.month}"
+                                : "Custom Range 📅",
+                            isSelected: selectedFilter == "custom",
+                            onTap: () async {
+                              final picked = await showDateRangePicker(
+                                context: context,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                initialDateRange: customRange ??
+                                    DateTimeRange(
+                                      start: now.subtract(
+                                        const Duration(days: 7),
+                                      ),
+                                      end: now,
+                                    ),
+                                builder: (ctx, child) {
+                                  return Theme(
+                                    data: colors.isDark
+                                        ? ThemeData.dark().copyWith(
+                                            colorScheme: const ColorScheme.dark(
+                                              primary: lenaGreen,
+                                              surface: surfaceCard,
+                                            ),
+                                          )
+                                        : ThemeData.light().copyWith(
+                                            colorScheme: ColorScheme.light(
+                                              primary: colors.greenText,
+                                              surface: colors.surface,
+                                              onSurface: colors.textPrimary,
+                                            ),
+                                          ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  customRange = picked;
+                                  selectedFilter = "custom";
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Filtered Summary Card
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                periodLabel,
+                                style: TextStyle(
+                                  color: colors.blueAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.surface,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: colors.border),
+                                ),
+                                child: Text(
+                                  "${filteredHistory.length} Entries",
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            height: 1,
+                            color: colors.divider,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Total Given (Diya)",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "₹$totalDiya",
+                                    style: TextStyle(
+                                      color: colors.isDark ? lenaGreenLight : colors.greenText,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "Total Received (Liya)",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "₹$totalLiya",
+                                    style: TextStyle(
+                                      color: colors.isDark ? denaRedLight : colors.redText,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Net Balance:",
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                netBalance > 0
+                                    ? "₹$netBalance (Lena Hai)"
+                                    : (netBalance < 0
+                                        ? "₹${netBalance.abs()} (Dena Hai)"
+                                        : "₹0 (Settled)"),
+                                style: TextStyle(
+                                  color: netBalance > 0
+                                      ? (colors.isDark ? lenaGreen : colors.greenText)
+                                      : (netBalance < 0
+                                          ? (colors.isDark ? denaRed : colors.redText)
+                                          : colors.textMuted),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Prominent Primary Button: Share PDF Statement
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC2626), // Professional PDF Red
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          size: 20,
+                        ),
+                        label: const Text(
+                          "Share PDF Statement (Table)",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(sheetCtx);
+                          try {
+                            final pdfBytes =
+                                await PdfStatementService.generateStatementPdf(
+                              friend: friend,
+                              filteredList: filteredHistory,
+                              periodLabel: periodLabel,
+                            );
+
+                            final safeName = friend.name
+                                .replaceAll(RegExp(r'[^\w\s]+'), '')
+                                .trim()
+                                .replaceAll(' ', '_');
+                            final fileName =
+                                'Hisaab_${safeName}_${now.day}_${now.month}_${now.year}.pdf';
+
+                            await Printing.sharePdf(
+                              bytes: pdfBytes,
+                              filename: fileName,
+                            );
+                          } catch (e) {
+                            if (mounted) {
+                              AppToast.show(
+                                this.context,
+                                title: "PDF share karne me samasya aayi: $e",
+                                type: ToastType.error,
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Secondary Action Buttons (Text Copy & Share)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.textPrimary,
+                              side: BorderSide(color: colors.border),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            icon: const Icon(Icons.copy_rounded, size: 16),
+                            label: const Text(
+                              "Copy Text",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: () {
+                              final text = _generateProfessionalStatement(
+                                friend: friend,
+                                filteredList: filteredHistory,
+                                periodLabel: periodLabel,
+                              );
+                              Clipboard.setData(ClipboardData(text: text));
+                              Navigator.pop(sheetCtx);
+                              AppToast.show(
+                                this.context,
+                                title: "Statement clipboard me copy ho gaya!",
+                                type: ToastType.success,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.textPrimary,
+                              side: BorderSide(color: colors.border),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            icon: const Icon(Icons.share_rounded, size: 16),
+                            label: const Text(
+                              "Share Text",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: () {
+                              final text = _generateProfessionalStatement(
+                                friend: friend,
+                                filteredList: filteredHistory,
+                                periodLabel: periodLabel,
+                              );
+                              Navigator.pop(sheetCtx);
+                              SharePlus.instance.share(
+                                ShareParams(
+                                  text: text,
+                                  subject: "Hisaab Statement - ${friend.name}",
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildShareFilterChip({
+    required AppColors colors,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (colors.isDark ? surfaceHighlight : colors.greenPillBg)
+                : colors.surfaceSecondary,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? (colors.isDark
+                      ? lenaGreen.withValues(alpha: 0.8)
+                      : colors.greenPillBorder)
+                  : colors.border,
+              width: isSelected ? 1.5 : 1,
+            ),
           ),
-        ],
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? (colors.isDark ? Colors.white : colors.greenText)
+                  : colors.textSecondary,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  // 4. Friend Khata Delete Karna
-  void _confirmDeleteFriend(FriendModel friend) {
-    showDialog(
+  // 6. Tap-to-Edit Entry Bottom Sheet
+  void _showEditEntrySheet(FriendModel friend, Map<dynamic, dynamic> tx) {
+    final int currentAmount = (tx["amount"] as num?)?.toInt() ?? 0;
+    final String currentTitle = tx["title"] ?? "";
+    final String currentMode = tx["mode"] ?? "UPI";
+    final String currentType = tx["type"] ?? "diya";
+
+    final editAmountCtrl = TextEditingController(
+      text: currentAmount > 0 ? "$currentAmount" : "",
+    );
+    final editNoteCtrl = TextEditingController(text: currentTitle);
+    int selectedType = currentType == 'diya' ? 0 : 1;
+    String selectedMode = currentMode;
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceHighlight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(Icons.delete_forever_rounded, color: denaRed, size: 22),
-            SizedBox(width: 8),
-            Text(
-              "Khata Delete Karein?",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setModalState) {
+            final bottomPadding = MediaQuery.of(modalCtx).viewInsets.bottom;
+            final colors = context.colors;
+
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomPadding),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: colors.border, width: 1.5),
+                ),
               ),
-            ),
-          ],
-        ),
-        content: Text(
-          "Kya aap sach me '${friend.name}' ka khata aur sare statement permanent delete karna chahte hain?",
-          style: const TextStyle(color: Color(0xFFA3A3A3), fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              friend.delete();
-              Navigator.of(context).pop();
-              AppToast.show(
-                context,
-                title: "${friend.name} ka khata delete ho gaya!",
-                type: ToastType.error,
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: denaRed),
-            child: const Text(
-              "Delete Khata",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header with Delete shortcut
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.edit_note_rounded,
+                              color: colors.textPrimary,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Edit Entry",
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: colors.redText,
+                            size: 22,
+                          ),
+                          tooltip: "Delete Entry",
+                          onPressed: () {
+                            Navigator.pop(modalCtx);
+                            _showEntryDeleteDialog(friend, tx);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Diya / Liya Toggle
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setModalState(() => selectedType = 0),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: selectedType == 0
+                                      ? (colors.isDark
+                                          ? const Color(0xB3022C22)
+                                          : colors.greenPillBg)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: selectedType == 0
+                                      ? Border.all(
+                                          color: colors.isDark
+                                              ? const Color(0x66047857)
+                                              : colors.greenPillBorder,
+                                        )
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_upward_rounded,
+                                      size: 16,
+                                      color: selectedType == 0
+                                          ? (colors.isDark
+                                              ? lenaGreenLight
+                                              : colors.greenText)
+                                          : colors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Diya (Udhar)",
+                                      style: TextStyle(
+                                        color: selectedType == 0
+                                            ? (colors.isDark
+                                                ? lenaGreenLight
+                                                : colors.greenText)
+                                            : colors.textMuted,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setModalState(() => selectedType = 1),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: selectedType == 1
+                                      ? (colors.isDark
+                                          ? const Color(0xB34C0519)
+                                          : colors.redPillBg)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: selectedType == 1
+                                      ? Border.all(
+                                          color: colors.isDark
+                                              ? const Color(0x66BE123C)
+                                              : colors.redPillBorder,
+                                        )
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_downward_rounded,
+                                      size: 16,
+                                      color: selectedType == 1
+                                          ? (colors.isDark
+                                              ? denaRedLight
+                                              : colors.redText)
+                                          : colors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Liya (Paisa)",
+                                      style: TextStyle(
+                                        color: selectedType == 1
+                                            ? (colors.isDark
+                                                ? denaRedLight
+                                                : colors.redText)
+                                            : colors.textMuted,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Amount Field
+                    Text(
+                      "Amount (₹)",
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            "₹",
+                            style: TextStyle(
+                              color: selectedType == 0
+                                  ? (colors.isDark ? lenaGreenLight : colors.greenText)
+                                  : (colors.isDark ? denaRedLight : colors.redText),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: editAmountCtrl,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "0",
+                                hintStyle: TextStyle(color: colors.textMuted),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Note Field
+                    Text(
+                      "Note / Title",
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_note_rounded,
+                            color: colors.textMuted,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: editNoteCtrl,
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 13,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Hisaab ka note...",
+                                hintStyle: TextStyle(
+                                  color: colors.textMuted,
+                                  fontSize: 13,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Payment Mode Chips
+                    Text(
+                      "Payment Mode",
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: ["UPI", "Cash", "ATM"].map((mode) {
+                        final isSelected = selectedMode == mode;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () =>
+                                setModalState(() => selectedMode = mode),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (colors.isDark ? surfaceHighlight : colors.greenPillBg)
+                                    : colors.surfaceSecondary,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? (colors.isDark ? lenaGreenLight.withValues(alpha: 0.6) : colors.greenPillBorder)
+                                      : colors.border,
+                                ),
+                              ),
+                              child: Text(
+                                mode,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? (colors.isDark ? Colors.white : colors.greenText)
+                                      : colors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 22),
+
+                    // Update Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.isDark ? Colors.white : colors.greenAccent,
+                          foregroundColor: colors.isDark ? Colors.black : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final newAmt =
+                              int.tryParse(editAmountCtrl.text.trim()) ?? 0;
+                          if (newAmt <= 0) {
+                            AppToast.show(
+                              modalCtx,
+                              title: "Valid amount daalein!",
+                              type: ToastType.warning,
+                            );
+                            return;
+                          }
+                          final newNote = editNoteCtrl.text.trim().isEmpty
+                              ? (selectedType == 0
+                                  ? "Udhar Diya"
+                                  : "Paisa Liya")
+                              : editNoteCtrl.text.trim();
+
+                          Navigator.pop(modalCtx);
+
+                          await _entryService.editSingleFriendTransaction(
+                            friend: friend,
+                            targetTx: tx,
+                            newAmount: newAmt,
+                            newNote: newNote,
+                            newPaymentMode: selectedMode,
+                            newType: selectedType == 0 ? 'diya' : 'liya',
+                          );
+
+                          if (mounted) {
+                            setState(() {});
+                            AppToast.show(
+                              context,
+                              title: "Entry update ho gayi!",
+                              type: ToastType.success,
+                            );
+                          }
+                        },
+                        child: Text(
+                          "Update Entry",
+                          style: TextStyle(
+                            color: colors.isDark ? Colors.black : Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -344,6 +1501,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return ValueListenableBuilder<Box<FriendModel>>(
       valueListenable: _friendsBox.listenable(),
       builder: (context, box, _) {
@@ -371,12 +1530,12 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
         }
 
         return Scaffold(
-          backgroundColor: oledBg,
+          backgroundColor: colors.bg,
           body: Stack(
             children: [
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.25,
+                  opacity: colors.isDark ? 0.25 : 0.05,
                   child: Image.asset(
                     'assets/images/chat_bg.png',
                     fit: BoxFit.cover,
@@ -410,9 +1569,9 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                   decoration: const BoxDecoration(
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.arrow_back_ios_new_rounded,
-                                    color: Color(0xFFA3A3A3),
+                                    color: colors.textPrimary,
                                     size: 18,
                                   ),
                                 ),
@@ -420,8 +1579,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                               const SizedBox(width: 4),
                               Text(
                                 displayName,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colors.textPrimary,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -0.2,
@@ -430,59 +1589,81 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                             ],
                           ),
                           PopupMenuButton<String>(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.more_vert_rounded,
-                              color: Color(0xFFD4D4D4),
+                              color: colors.textPrimary,
                               size: 20,
                             ),
-                            color: surfaceHighlight,
+                            color: colors.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
-                              side: const BorderSide(color: borderCustom),
+                              side: BorderSide(color: colors.border),
                             ),
                             onSelected: (val) {
                               if (currentFriend == null) return;
-                              if (val == 'clear_chat') {
+                              if (val == 'share_whatsapp') {
+                                _shareHisaabOnWhatsApp(currentFriend);
+                              } else if (val == 'clear_chat') {
                                 _clearChatHistory(currentFriend);
                               } else if (val == 'delete_khata') {
                                 _confirmDeleteFriend(currentFriend);
                               }
                             },
                             itemBuilder: (ctx) => [
-                              const PopupMenuItem(
-                                value: 'clear_chat',
+                              PopupMenuItem(
+                                value: 'share_whatsapp',
                                 child: Row(
                                   children: [
-                                    Icon(
-                                      Icons.cleaning_services_rounded,
-                                      color: Colors.amber,
+                                    const Icon(
+                                      Icons.share_rounded,
+                                      color: Color(0xFF25D366),
                                       size: 18,
                                     ),
-                                    SizedBox(width: 10),
+                                    const SizedBox(width: 10),
                                     Text(
-                                      "Clear Chat",
+                                      "WhatsApp / Share Hisaab",
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: colors.textPrimary,
                                         fontSize: 13,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const PopupMenuItem(
+                              PopupMenuItem(
+                                value: 'clear_chat',
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.cleaning_services_rounded,
+                                      color: Colors.amber,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      "Clear Chat",
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
                                 value: 'delete_khata',
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.delete_forever_rounded,
-                                      color: denaRed,
+                                      color: colors.redText,
                                       size: 18,
                                     ),
-                                    SizedBox(width: 10),
+                                    const SizedBox(width: 10),
                                     Text(
                                       "Delete Khata",
                                       style: TextStyle(
-                                        color: denaRed,
+                                        color: colors.redText,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -507,9 +1688,10 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         curve: Curves.easeInOut,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: surfaceCard.withValues(alpha: 0.94),
+                          color: colors.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderCustom),
+                          border: Border.all(color: colors.border),
+                          boxShadow: colors.isDark ? [] : [colors.cardShadow],
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -526,8 +1708,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           : (isLena
                                                 ? "NET LENA HAI"
                                                 : "NET DENA HAI"),
-                                      style: const TextStyle(
-                                        color: Color(0xFFA3A3A3),
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 0.8,
@@ -543,10 +1725,10 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           "₹$currentBalance",
                                           style: TextStyle(
                                             color: isSettled
-                                                ? Colors.white70
+                                                ? colors.textSecondary
                                                 : (isLena
-                                                      ? lenaGreen
-                                                      : denaRed),
+                                                      ? (colors.isDark ? lenaGreen : colors.greenText)
+                                                      : (colors.isDark ? denaRed : colors.redText)),
                                             fontSize: 20,
                                             fontWeight: FontWeight.w800,
                                             letterSpacing: -0.3,
@@ -561,12 +1743,14 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                                     : "(Pay)"),
                                           style: TextStyle(
                                             color: isSettled
-                                                ? Colors.white54
+                                                ? colors.textMuted
                                                 : (isLena
-                                                      ? const Color(0xE634D399)
-                                                      : const Color(
-                                                          0xE6FB7185,
-                                                        )),
+                                                      ? (colors.isDark
+                                                          ? const Color(0xE634D399)
+                                                          : colors.greenText)
+                                                      : (colors.isDark
+                                                          ? const Color(0xE6FB7185)
+                                                          : colors.redText)),
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -589,14 +1773,15 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: _isDetailsExpanded
-                                          ? surfaceHighlight
-                                          : surfaceSecondary,
+                                          ? (colors.isDark
+                                              ? surfaceHighlight
+                                              : colors.blueAccent.withValues(alpha: 0.12))
+                                          : colors.surfaceSecondary,
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: _isDetailsExpanded
-                                            ? const Color(0xFF38BDF8)
-                                                  .withValues(alpha: 0.5)
-                                            : borderCustom,
+                                            ? colors.blueAccent.withValues(alpha: 0.5)
+                                            : colors.border,
                                       ),
                                     ),
                                     child: Row(
@@ -606,8 +1791,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           "Details",
                                           style: TextStyle(
                                             color: _isDetailsExpanded
-                                                ? const Color(0xFF38BDF8)
-                                                : const Color(0xFFD4D4D4),
+                                                ? colors.blueAccent
+                                                : colors.textSecondary,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -621,8 +1806,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           child: Icon(
                                             Icons.keyboard_arrow_down_rounded,
                                             color: _isDetailsExpanded
-                                                ? const Color(0xFF38BDF8)
-                                                : const Color(0xFFD4D4D4),
+                                                ? colors.blueAccent
+                                                : colors.textSecondary,
                                             size: 16,
                                           ),
                                         ),
@@ -639,7 +1824,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                               Container(
                                 width: double.infinity,
                                 height: 1,
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color: colors.divider,
                               ),
                               const SizedBox(height: 10),
                               Column(
@@ -648,10 +1833,10 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                   // Mobile Number
                                   Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.phone_rounded,
                                         size: 13,
-                                        color: Color(0xFFA3A3A3),
+                                        color: colors.textSecondary,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
@@ -660,8 +1845,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                             : "Mobile number nahi joda gaya",
                                         style: TextStyle(
                                           color: phone.isNotEmpty
-                                              ? Colors.white
-                                              : Colors.white38,
+                                              ? colors.textPrimary
+                                              : colors.textMuted,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -672,10 +1857,10 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                   // Description & Tag Badge
                                   Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.notes_rounded,
                                         size: 13,
-                                        color: Color(0xFFA3A3A3),
+                                        color: colors.textSecondary,
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
@@ -683,8 +1868,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           descNote.isNotEmpty
                                               ? descNote
                                               : "Koi note/description nahi",
-                                          style: const TextStyle(
-                                            color: Color(0xFFD4D4D4),
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
                                             fontSize: 11.5,
                                           ),
                                           maxLines: 2,
@@ -698,19 +1883,20 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF0C1929),
+                                            color: colors.isDark
+                                                ? const Color(0xFF0C1929)
+                                                : colors.blueAccent.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(
                                               6,
                                             ),
                                             border: Border.all(
-                                              color: const Color(0xFF0284C7)
-                                                  .withValues(alpha: 0.4),
+                                              color: colors.blueAccent.withValues(alpha: 0.4),
                                             ),
                                           ),
                                           child: Text(
                                             tag,
-                                            style: const TextStyle(
-                                              color: Color(0xFF38BDF8),
+                                            style: TextStyle(
+                                              color: colors.blueAccent,
                                               fontSize: 9.5,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -729,11 +1915,11 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                     // Chat Statements List
                     Expanded(
                       child: historyList.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
                                 "Abhi tak koi entry nahi hai",
                                 style: TextStyle(
-                                  color: Color(0xFFA3A3A3),
+                                  color: colors.textSecondary,
                                   fontSize: 13,
                                 ),
                               ),
@@ -754,6 +1940,11 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                       ? Alignment.centerRight
                                       : Alignment.centerLeft,
                                   child: GestureDetector(
+                                    onTap: () {
+                                      if (currentFriend != null) {
+                                        _showEditEntrySheet(currentFriend, msg);
+                                      }
+                                    },
                                     onLongPress: () {
                                       if (currentFriend != null) {
                                         _showEntryDeleteDialog(
@@ -769,11 +1960,14 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                       margin: const EdgeInsets.only(bottom: 12),
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color:
-                                            (isDiya
+                                        color: colors.isDark
+                                            ? (isDiya
                                                     ? const Color(0xFF121415)
                                                     : surfaceCard)
-                                                .withValues(alpha: 0.88),
+                                                .withValues(alpha: 0.88)
+                                            : (isDiya
+                                                    ? colors.greenPillBg
+                                                    : colors.redPillBg),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(16),
                                           bottomLeft: const Radius.circular(16),
@@ -784,7 +1978,14 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                               ? const Radius.circular(4)
                                               : const Radius.circular(16),
                                         ),
-                                        border: Border.all(color: borderCustom),
+                                        border: Border.all(
+                                          color: colors.isDark
+                                              ? borderCustom
+                                              : (isDiya
+                                                  ? colors.greenPillBorder
+                                                  : colors.redPillBorder),
+                                        ),
+                                        boxShadow: colors.isDark ? [] : [colors.cardShadow],
                                       ),
                                       child: Column(
                                         crossAxisAlignment:
@@ -792,12 +1993,12 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.only(
-                                              bottom: 6,
+                                              bottom: 8,
                                             ),
-                                            decoration: const BoxDecoration(
+                                            decoration: BoxDecoration(
                                               border: Border(
                                                 bottom: BorderSide(
-                                                  color: Color(0x0DFFFFFF),
+                                                  color: colors.divider,
                                                 ),
                                               ),
                                             ),
@@ -809,12 +2010,16 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      "${isDiya ? '+' : '-'}₹${msg["amount"]}",
+                                                      "₹${msg["amount"]}",
                                                       style: TextStyle(
                                                         color: isDiya
-                                                            ? lenaGreenLight
-                                                            : denaRed,
-                                                        fontSize: 14,
+                                                            ? (colors.isDark
+                                                                ? lenaGreenLight
+                                                                : colors.greenText)
+                                                            : (colors.isDark
+                                                                ? denaRedLight
+                                                                : colors.redText),
+                                                        fontSize: 16,
                                                         fontWeight:
                                                             FontWeight.bold,
                                                       ),
@@ -826,12 +2031,16 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                                           : "(Liya)",
                                                       style: TextStyle(
                                                         color: isDiya
-                                                            ? const Color(
-                                                                0xCC6EE7B7,
-                                                              )
-                                                            : const Color(
-                                                                0xCCFDA4AF,
-                                                              ),
+                                                            ? (colors.isDark
+                                                                ? const Color(
+                                                                    0xCC6EE7B7,
+                                                                  )
+                                                                : colors.greenText)
+                                                            : (colors.isDark
+                                                                ? const Color(
+                                                                    0xCCFDA4AF,
+                                                                  )
+                                                                : colors.redText),
                                                         fontSize: 12,
                                                       ),
                                                     ),
@@ -844,19 +2053,19 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                                         vertical: 2,
                                                       ),
                                                   decoration: BoxDecoration(
-                                                    color: surfaceHighlight,
+                                                    color: colors.surfaceSecondary,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           6,
                                                         ),
                                                     border: Border.all(
-                                                      color: borderCustom,
+                                                      color: colors.border,
                                                     ),
                                                   ),
                                                   child: Text(
                                                     msg["mode"] ?? "UPI",
-                                                    style: const TextStyle(
-                                                      color: Color(0xFFD4D4D4),
+                                                    style: TextStyle(
+                                                      color: colors.textSecondary,
                                                       fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -870,9 +2079,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                           Text(
                                             msg["title"] ?? "Hisaab",
                                             style: TextStyle(
-                                              color: isDiya
-                                                  ? const Color(0xFFE5E5E5)
-                                                  : const Color(0xFFD4D4D4),
+                                              color: colors.textPrimary,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -881,23 +2088,44 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
-                                              const SizedBox.shrink(),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.edit_rounded,
+                                                    size: 11,
+                                                    color: colors.textMuted,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    "Tap to edit",
+                                                    style: TextStyle(
+                                                      color: colors.textMuted,
+                                                      fontSize: 9.5,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                               Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Text(
                                                     msg["date"] ?? "",
-                                                    style: const TextStyle(
-                                                      color: Color(0xFFD4D4D4),
+                                                    style: TextStyle(
+                                                      color: colors.textMuted,
                                                       fontSize: 10,
                                                     ),
                                                   ),
                                                   if (isDiya) ...[
                                                     const SizedBox(width: 4),
-                                                    const Icon(
+                                                    Icon(
                                                       Icons.done_all_rounded,
                                                       size: 12,
-                                                      color: lenaGreenLight,
+                                                      color: colors.isDark
+                                                          ? lenaGreenLight
+                                                          : colors.greenText,
                                                     ),
                                                   ],
                                                 ],
@@ -913,9 +2141,56 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                             ),
                     ),
 
-                    // Bottom Dock
-                    _buildBottomDock(),
+                    // Bottom Dock Animated CrossFade (Auto hides on scroll)
+                    AnimatedCrossFade(
+                      duration: const Duration(milliseconds: 220),
+                      crossFadeState: _isBottomDockVisible
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
+                      firstChild: _buildBottomDock(context),
+                      secondChild: const SizedBox.shrink(),
+                    ),
                   ],
+                ),
+              ),
+
+              // Floating Restore Button when Dock is Hidden
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                bottom: _isBottomDockVisible ? -60 : 20,
+                right: 20,
+                child: GestureDetector(
+                  onTap: () => setState(() => _isBottomDockVisible = true),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colors.surface.withValues(alpha: 0.95),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: (colors.isDark ? lenaGreen : colors.greenText)
+                            .withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: colors.isDark ? 0.5 : 0.15,
+                          ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        color: colors.isDark ? Colors.white : colors.greenText,
+                        size: 24,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -925,12 +2200,16 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
     );
   }
 
-  Widget _buildBottomDock() {
+  Widget _buildBottomDock(BuildContext context) {
+    final colors = context.colors;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(
-        color: oledBg.withValues(alpha: 0.96),
-        border: const Border(top: BorderSide(color: borderCustom)),
+        color: colors.isDark
+            ? oledBg.withValues(alpha: 0.96)
+            : colors.surface.withValues(alpha: 0.98),
+        border: Border(top: BorderSide(color: colors.border)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -939,26 +2218,26 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: surfaceSecondary,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.edit_note_rounded,
-                  color: Color(0xFFA3A3A3),
+                  color: colors.textMuted,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _noteController,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: colors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
                       hintText: "Hisaab ka note likhein...",
                       hintStyle: TextStyle(
-                        color: Color(0xFF737373),
+                        color: colors.textMuted,
                         fontSize: 12,
                       ),
                       border: InputBorder.none,
@@ -967,24 +2246,24 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   ),
                 ),
                 PopupMenuButton<String>(
-                  color: surfaceHighlight,
+                  color: colors.surface,
                   onSelected: (val) =>
                       setState(() => _selectedPaymentMode = val),
                   itemBuilder: (ctx) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "UPI",
-                      child: Text("UPI", style: TextStyle(color: Colors.white)),
+                      child: Text("UPI", style: TextStyle(color: colors.textPrimary)),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "Cash",
                       child: Text(
                         "Cash",
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: colors.textPrimary),
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "ATM",
-                      child: Text("ATM", style: TextStyle(color: Colors.white)),
+                      child: Text("ATM", style: TextStyle(color: colors.textPrimary)),
                     ),
                   ],
                   child: Container(
@@ -993,32 +2272,32 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: surfaceHighlight,
+                      color: colors.surfaceSecondary,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: borderCustom),
+                      border: Border.all(color: colors.border),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.account_balance_wallet_outlined,
                           size: 14,
-                          color: lenaGreenLight,
+                          color: colors.isDark ? lenaGreenLight : colors.greenText,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _selectedPaymentMode,
-                          style: const TextStyle(
-                            color: Color(0xFFE5E5E5),
+                          style: TextStyle(
+                            color: colors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const Icon(
+                        Icon(
                           Icons.expand_less_rounded,
                           size: 14,
-                          color: Color(0xFFA3A3A3),
+                          color: colors.textMuted,
                         ),
                       ],
                     ),
@@ -1031,9 +2310,9 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: surfaceSecondary.withValues(alpha: 0.9),
+              color: colors.surfaceSecondary.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
@@ -1044,11 +2323,17 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
                         color: _entryType == 0
-                            ? const Color(0xB3022C22)
+                            ? (colors.isDark
+                                ? const Color(0xB3022C22)
+                                : colors.greenPillBg)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: _entryType == 0
-                            ? Border.all(color: const Color(0x66047857))
+                            ? Border.all(
+                                color: colors.isDark
+                                    ? const Color(0x66047857)
+                                    : colors.greenPillBorder,
+                              )
                             : null,
                       ),
                       child: Row(
@@ -1058,16 +2343,20 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                             Icons.arrow_upward_rounded,
                             size: 16,
                             color: _entryType == 0
-                                ? const Color(0xFF6EE7B7)
-                                : const Color(0xFFA3A3A3),
+                                ? (colors.isDark
+                                    ? const Color(0xFF6EE7B7)
+                                    : colors.greenText)
+                                : colors.textMuted,
                           ),
                           const SizedBox(width: 5),
                           Text(
                             "Diya",
                             style: TextStyle(
                               color: _entryType == 0
-                                  ? const Color(0xFF6EE7B7)
-                                  : const Color(0xFFA3A3A3),
+                                  ? (colors.isDark
+                                      ? const Color(0xFF6EE7B7)
+                                      : colors.greenText)
+                                  : colors.textMuted,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1084,11 +2373,17 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
                         color: _entryType == 1
-                            ? const Color(0xB34C0519)
+                            ? (colors.isDark
+                                ? const Color(0xB34C0519)
+                                : colors.redPillBg)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: _entryType == 1
-                            ? Border.all(color: const Color(0x66BE123C))
+                            ? Border.all(
+                                color: colors.isDark
+                                    ? const Color(0x66BE123C)
+                                    : colors.redPillBorder,
+                              )
                             : null,
                       ),
                       child: Row(
@@ -1098,16 +2393,20 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                             Icons.arrow_downward_rounded,
                             size: 16,
                             color: _entryType == 1
-                                ? const Color(0xFFFDA4AF)
-                                : const Color(0xFFA3A3A3),
+                                ? (colors.isDark
+                                    ? const Color(0xFFFDA4AF)
+                                    : colors.redText)
+                                : colors.textMuted,
                           ),
                           const SizedBox(width: 5),
                           Text(
                             "Liya",
                             style: TextStyle(
                               color: _entryType == 1
-                                  ? const Color(0xFFFDA4AF)
-                                  : const Color(0xFFA3A3A3),
+                                  ? (colors.isDark
+                                      ? const Color(0xFFFDA4AF)
+                                      : colors.redText)
+                                  : colors.textMuted,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1128,16 +2427,18 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: surfaceSecondary,
+                    color: colors.surfaceSecondary,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: borderCustom),
+                    border: Border.all(color: colors.border),
                   ),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         "₹",
                         style: TextStyle(
-                          color: lenaGreenLight,
+                          color: colors.isDark
+                              ? lenaGreenLight
+                              : colors.greenText,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1147,19 +2448,21 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         child: TextField(
                           controller: _amountController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: TextStyle(
+                            color: colors.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: "Amount",
                             hintStyle: TextStyle(
-                              color: Color(0xFF737373),
+                              color: colors.textMuted,
                               fontSize: 13,
                             ),
                             border: InputBorder.none,
-                            isDense: true,
                           ),
                         ),
                       ),
@@ -1174,30 +2477,36 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.isDark
+                        ? Colors.white
+                        : const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black26,
+                        color: colors.isDark ? Colors.black26 : Colors.black12,
                         blurRadius: 10,
-                        offset: Offset(0, 4),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         "Save",
                         style: TextStyle(
-                          color: Colors.black,
+                          color: colors.isDark ? Colors.black : Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(Icons.check_rounded, color: Colors.black, size: 16),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.check_rounded,
+                        color: colors.isDark ? Colors.black : Colors.white,
+                        size: 16,
+                      ),
                     ],
                   ),
                 ),
@@ -1209,14 +2518,14 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   height: 48,
                   width: 48,
                   decoration: BoxDecoration(
-                    color: surfaceSecondary,
+                    color: colors.surfaceSecondary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: borderCustom),
+                    border: Border.all(color: colors.border),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.close_rounded,
-                      color: Color(0xFFD4D4D4),
+                      color: colors.textPrimary,
                       size: 20,
                     ),
                   ),
@@ -1229,7 +2538,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
             width: 128,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0x6652525B),
+              color: colors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

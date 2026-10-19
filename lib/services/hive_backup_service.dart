@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/friend_model.dart';
 import '../models/transaction_model.dart';
@@ -193,7 +192,7 @@ class HiveBackupService {
         final title = item["title"]?.toString() ?? '';
         final amount = (item["amount"] as num?)?.toInt() ?? 0;
         final type = item["type"]?.toString() ?? '';
-        final fp = "${date.millisecondsSinceEpoch}_${title}_${amount}_${type}";
+        final fp = "${date.millisecondsSinceEpoch}_${title}_${amount}_$type";
 
         if (!localTxFingerprints.contains(fp)) {
           // Cloud has it, app does not -> Download to app!
@@ -225,7 +224,7 @@ class HiveBackupService {
       final ts = exp["timestamp"] ?? 0;
       final title = exp["title"] ?? '';
       final amt = exp["amount"] ?? 0;
-      final fp = "${ts}_${title}_${amt}";
+      final fp = "${ts}_${title}_$amt";
       localExpFingerprints.add(fp);
       localExpList.add(Map<String, dynamic>.from(exp));
     }
@@ -238,7 +237,7 @@ class HiveBackupService {
         final ts = item["timestamp"] ?? 0;
         final title = item["title"] ?? '';
         final amt = item["amount"] ?? 0;
-        final fp = "${ts}_${title}_${amt}";
+        final fp = "${ts}_${title}_$amt";
 
         if (!localExpFingerprints.contains(fp)) {
           // Cloud has it, app does not -> Download to local app!

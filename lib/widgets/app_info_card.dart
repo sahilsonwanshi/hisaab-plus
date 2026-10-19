@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../theme/app_colors.dart';
 import 'custom_toast.dart';
 
 class AppInfoCard extends StatefulWidget {
@@ -12,19 +13,21 @@ class AppInfoCard extends StatefulWidget {
 class _AppInfoCardState extends State<AppInfoCard> {
   bool _isExpanded = false;
 
-  static const Color greenAccent = Color(0xFF00E676);
-  static const Color textMuted = Color(0xFFA1A1AA);
-  static const Color textMutedDark = Color(0xFF71717A);
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
+        color: colors.isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: colors.border,
+          width: 1,
         ),
+        boxShadow: colors.isDark ? [] : [colors.cardShadow],
       ),
       child: Material(
         color: Colors.transparent,
@@ -43,20 +46,23 @@ class _AppInfoCardState extends State<AppInfoCard> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F291C).withValues(alpha: 0.70),
+                        color: (colors.isDark
+                                ? const Color(0xFF0F291C)
+                                : colors.greenPillBg)
+                            .withValues(alpha: 0.8),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.info_outline_rounded,
-                        color: greenAccent,
+                        color: colors.greenAccent,
                         size: 15,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       "About Hisaab+",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: colors.textPrimary,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.3,
@@ -65,8 +71,8 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     const Spacer(),
                     Text(
                       _isExpanded ? "Hide" : "Details",
-                      style: const TextStyle(
-                        color: textMutedDark,
+                      style: TextStyle(
+                        color: colors.textMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -75,9 +81,9 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     AnimatedRotation(
                       turns: _isExpanded ? 0.5 : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: const Icon(
+                      child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: textMutedDark,
+                        color: colors.textMuted,
                         size: 16,
                       ),
                     ),
@@ -88,26 +94,34 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Divider(
                       height: 1,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: colors.divider,
                     ),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         "Build Version",
-                        style: TextStyle(color: textMuted, fontSize: 11.5),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11.5,
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B2A1E),
+                          color: colors.isDark
+                              ? const Color(0xFF1B2A1E)
+                              : colors.greenPillBg,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          "v4.4.2",
+                        child: Text(
+                          "v4.4.4",
                           style: TextStyle(
-                            color: greenAccent,
+                            color: colors.greenAccent,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -116,17 +130,20 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         "Lead Developer",
-                        style: TextStyle(color: textMuted, fontSize: 11.5),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11.5,
+                        ),
                       ),
                       Text(
                         "Sahil Sonwanshi",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colors.textPrimary,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -134,17 +151,20 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         "Architecture",
-                        style: TextStyle(color: textMuted, fontSize: 11.5),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11.5,
+                        ),
                       ),
                       Text(
                         "100% Offline (Hive NoSQL)",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colors.textPrimary,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -165,31 +185,39 @@ class _AppInfoCardState extends State<AppInfoCard> {
                     },
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
                       ),
-                      child: const Row(
+                      decoration: BoxDecoration(
+                        color: colors.isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : colors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: colors.borderSubtle,
+                        ),
+                      ),
+                      child: Row(
                         children: [
                           Icon(
                             Icons.alternate_email_rounded,
                             size: 14,
-                            color: Color(0xFF38BDF8),
+                            color: colors.blueAccent,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
                             "sahilsonwanshi94@gmail.com",
                             style: TextStyle(
-                              color: Colors.white,
+                              color: colors.textPrimary,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Spacer(),
+                          const Spacer(),
                           Icon(
                             Icons.copy_rounded,
-                            color: textMutedDark,
+                            color: colors.textMuted,
                             size: 13,
                           ),
                         ],

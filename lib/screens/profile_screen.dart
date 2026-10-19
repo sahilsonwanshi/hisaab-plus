@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/friend_model.dart';
+import '../services/drive_sync_service.dart';
 import '../widgets/app_info_card.dart';
 import '../widgets/custom_toast.dart';
 import '../widgets/expense_filter_bar.dart';
 import '../widgets/personal_expense_timeline.dart';
-import '../widgets/profile_summary_card.dart';
+import '../widgets/profile_compact_stats.dart';
+import '../widgets/profile_user_card.dart';
 import '../widgets/smooth_route.dart';
 import 'backup_screen.dart';
 import 'entry_form_screen.dart';
+import '../theme/app_colors.dart';
+import '../widgets/theme_selector_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onGoToHome;
@@ -25,34 +30,21 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  // Exact OLED Palette
-  static const Color oledBg = Color(0xFF000000);
-  static const Color greenAccent = Color(0xFF00E676);
-  static const Color redAccent = Color(0xFFFF5252);
-  static const Color textMuted = Color(0xFFA1A1AA);
-
-  String _activeCategoryFilter = "Sabhi";
+  static const int _pageSize = 6;
   String _activeDateFilter = "all"; // 'all', 'today', 'yesterday', 'custom'
+  String _activeCategoryFilter = "Sabhi";
   DateTime? _selectedCustomDate;
-  int _displayLimit = 20;
+  int _displayLimit = _pageSize;
 
   late Box<FriendModel> _friendsBox;
   late Box<Map> _personalBox;
-
-  static const List<String> _categories = [
-    "Sabhi",
-    "Chai",
-    "Kirana",
-    "Khana",
-    "Medical",
-    "Other",
-  ];
 
   @override
   void initState() {
     super.initState();
     _friendsBox = Hive.box<FriendModel>('friends_box');
     _personalBox = Hive.box<Map>('personal_expenses_box');
+    DriveSyncService.instance.initialize();
   }
 
   Future<void> _onRefresh() async {
@@ -66,6 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       SmoothOledRoute(
         page: EntryFormView(
           entryType: 2,
+          initialTabIndex: 1,
           onClose: () => Navigator.pop(context),
         ),
       ),
@@ -80,27 +73,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       initialDate: _selectedCustomDate ?? now,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: greenAccent,
-              onPrimary: Colors.black,
-              surface: Color(0xFF16161A),
-              onSurface: Colors.white,
-            ),
-            dialogBackgroundColor: const Color(0xFF16161A),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
       setState(() {
         _selectedCustomDate = picked;
         _activeDateFilter = "custom";
-        _displayLimit = 20;
+        _displayLimit = _pageSize;
       });
     }
   }
@@ -139,23 +118,24 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _confirmDeleteExpense(dynamic key, Map item) {
     final title = item["title"] ?? "Kharcha";
     final amount = item["amount"] ?? 0;
+    final colors = context.colors;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.black.withValues(alpha: 0.92),
+        backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+          side: BorderSide(color: colors.border),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.delete_forever_rounded, color: redAccent, size: 22),
-            SizedBox(width: 8),
+            Icon(Icons.delete_forever_rounded, color: colors.redAccent, size: 22),
+            const SizedBox(width: 8),
             Text(
               "Kharcha Delete Karein?",
               style: TextStyle(
-                color: Colors.white,
+                color: colors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -164,14 +144,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         content: Text(
           "Kya aap '$title' (-₹$amount) ko delete karna chahte hain?",
-          style: const TextStyle(color: textMuted, fontSize: 13),
+          style: TextStyle(color: colors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               "Cancel",
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              style: TextStyle(color: colors.textMuted, fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
@@ -185,7 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: redAccent,
+              backgroundColor: colors.redAccent,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -204,36 +184,43 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: oledBg,
+      backgroundColor: colors.bg,
       body: Stack(
         fit: StackFit.expand,
         children: [
           // 1. Fullscreen Wallpaper
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.38,
-              child: Image.asset(
-                'assets/images/profile_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+          if (colors.isDark)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.38,
+                child: Image.asset(
+                  'assets/images/profile_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
-          // 2. Soft Dark Ambient Gradient
+          // 2. Soft Ambient Gradient
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.35),
-                    Colors.black.withValues(alpha: 0.65),
-                  ],
+                  colors: colors.isDark
+                      ? [
+                          Colors.black.withValues(alpha: 0.35),
+                          Colors.black.withValues(alpha: 0.65),
+                        ]
+                      : [
+                          colors.bg.withValues(alpha: 0.6),
+                          colors.bg,
+                        ],
                 ),
               ),
             ),
@@ -250,8 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _onRefresh,
-                    color: greenAccent,
-                    backgroundColor: Colors.black87,
+                    color: colors.greenAccent,
+                    backgroundColor: colors.surface,
                     displacement: 20,
                     child: ValueListenableBuilder<Box<FriendModel>>(
                       valueListenable: _friendsBox.listenable(),
@@ -272,13 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         }
 
                         final int netBalance = totalLena - totalDena;
-                        final int combined = totalLena + totalDena;
-                        final double greenFrac = combined == 0
-                            ? 0.5
-                            : (totalLena / combined);
-                        final double redFrac = combined == 0
-                            ? 0.5
-                            : (totalDena / combined);
 
                         return ValueListenableBuilder<Box<Map>>(
                           valueListenable: _personalBox.listenable(),
@@ -292,21 +272,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 .reversed
                                 .toList();
 
-                            // Category + Date Filter Integration
+                            // Date Filter Integration
                             final List<MapEntry<dynamic, Map>>
                             allFilteredItems = [];
                             for (int i = 0; i < rawItems.length; i++) {
                               final item = rawItems[i];
                               final k = rawKeys[i];
-                              final cat =
-                                  item["category"]?.toString() ?? "Other";
-
-                              // Category Match
-                              if (_activeCategoryFilter != "Sabhi" &&
-                                  cat.toLowerCase() !=
-                                      _activeCategoryFilter.toLowerCase()) {
-                                continue;
-                              }
 
                               // Date Match
                               final ts =
@@ -315,6 +286,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                               final itemDate =
                                   DateTime.fromMillisecondsSinceEpoch(ts);
                               if (!_matchesDateFilter(itemDate)) {
+                                continue;
+                              }
+
+                              // Category Match
+                              if (_activeCategoryFilter != "Sabhi" &&
+                                  (item["category"] ?? "")
+                                          .toString()
+                                          .toLowerCase() !=
+                                      _activeCategoryFilter.toLowerCase()) {
                                 continue;
                               }
 
@@ -340,6 +320,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                             groupedExpenses = {};
                             final Map<String, int> dailyTotals = {};
 
+                            for (var entry in allFilteredItems) {
+                              final item = entry.value;
+                              final ts =
+                                  item["timestamp"] as int? ??
+                                  DateTime.now().millisecondsSinceEpoch;
+                              final dateLabel = _formatDateHeader(
+                                DateTime.fromMillisecondsSinceEpoch(ts),
+                              );
+                              dailyTotals[dateLabel] =
+                                  (dailyTotals[dateLabel] ?? 0) +
+                                  ((item["amount"] as num?)?.toInt() ?? 0);
+                            }
+
                             for (var entry in paginatedItems) {
                               final item = entry.value;
                               final ts =
@@ -352,9 +345,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                               groupedExpenses
                                   .putIfAbsent(dateLabel, () => [])
                                   .add(entry);
-                              dailyTotals[dateLabel] =
-                                  (dailyTotals[dateLabel] ?? 0) +
-                                  ((item["amount"] as num?)?.toInt() ?? 0);
                             }
 
                             final bool hasMore =
@@ -373,29 +363,84 @@ class _ProfileScreenState extends State<ProfileScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // 1. Profile Summary Card (Radial Net Balance, Lena, Dena)
-                                  ProfileSummaryCard(
+                                  // 1. Unified Profile & Backup Card
+                                  ValueListenableBuilder<GoogleSignInAccount?>(
+                                    valueListenable: DriveSyncService
+                                        .instance.currentUserNotifier,
+                                    builder: (context, googleAccount, _) {
+                                      return ProfileUserCard(
+                                        googleAccount: googleAccount,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            SmoothOledRoute(
+                                              page: const BackupScreen(),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // 2. Financial Overview (Clean 3-column snapshot)
+                                  ProfileCompactStats(
                                     netBalance: netBalance,
                                     totalLena: totalLena,
                                     totalDena: totalDena,
                                     lenaCount: lenaCount,
                                     denaCount: denaCount,
-                                    greenFrac: greenFrac,
-                                    redFrac: redFrac,
-                                    onSyncTap: () {
-                                      Navigator.push(
-                                        context,
-                                        SmoothOledRoute(
-                                          page: const BackupScreen(),
-                                        ),
-                                      );
-                                    },
-                                    onAddKharchaTap: _openDirectPersonalEntry,
+                                    personalKharchaTotal: filteredKharchaTotal,
+                                    onAddPersonalKharcha:
+                                        _openDirectPersonalEntry,
                                   ),
 
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 18),
 
-                                  // 2. Expense Filter Bar (Date + Category Capsules)
+                                   // 3. Personal Kharcha Header (Clean Title & Total)
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Personal Kharcha",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                      if (allFilteredItems.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 3.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colors.surfaceSecondary,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: colors.border,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            "Total: ₹$filteredKharchaTotal.00",
+                                            style: TextStyle(
+                                              color: colors.textSecondary,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 12),
+
+                                  // 4. Organized Day & Category Filter Bar
                                   ExpenseFilterBar(
                                     activeDateFilter: _activeDateFilter,
                                     selectedCustomDate: _selectedCustomDate,
@@ -403,7 +448,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                       setState(() {
                                         _activeDateFilter = newFilter;
                                         _selectedCustomDate = null;
-                                        _displayLimit = 20;
+                                        _displayLimit = _pageSize;
                                       });
                                     },
                                     onPickCustomDate: _pickCustomDate,
@@ -411,48 +456,92 @@ class _ProfileScreenState extends State<ProfileScreen>
                                       setState(() {
                                         _activeDateFilter = "all";
                                         _selectedCustomDate = null;
+                                        _displayLimit = _pageSize;
                                       });
                                     },
                                     activeCategoryFilter: _activeCategoryFilter,
-                                    categories: _categories,
-                                    rawItems: rawItems,
+                                    categories: const [
+                                      "Sabhi",
+                                      "Chai",
+                                      "Kirana",
+                                      "Khana",
+                                      "Medical",
+                                      "Other",
+                                    ],
+                                    rawItems: rawItems.cast<Map>(),
                                     onCategoryFilterChanged: (newCat) {
                                       setState(() {
                                         _activeCategoryFilter = newCat;
-                                        _displayLimit = 20;
+                                        _displayLimit = _pageSize;
                                       });
                                     },
                                   ),
 
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 8),
 
-                                  // 3. Section Title & Filter Total
+                                  // 5. Compact "+ Add Kharcha" Sub-Row
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text(
-                                        "Personal Kharcha",
+                                      Text(
+                                        _activeDateFilter == "all"
+                                            ? "Sabhi Din Ke Kharcha"
+                                            : _activeDateFilter == "today"
+                                                ? "Aaj Ka Kharcha"
+                                                : _activeDateFilter ==
+                                                        "yesterday"
+                                                    ? "Kal Ka Kharcha"
+                                                    : "Custom Date",
                                         style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
+                                          color: colors.textSecondary,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      Text(
-                                        "Filter Total: ₹$filteredKharchaTotal.00",
-                                        style: const TextStyle(
-                                          color: textMuted,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                      InkWell(
+                                        onTap: _openDirectPersonalEntry,
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colors.greenPillBg,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: colors.greenPillBorder,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.add_rounded,
+                                                color: colors.greenText,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                "Add Kharcha",
+                                                style: TextStyle(
+                                                  color: colors.greenText,
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
 
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 10),
 
-                                  // 4. Date-Grouped Timeline Cards
+                                  // 6. Date-Grouped Timeline Cards (Paginated)
                                   PersonalExpenseTimeline(
                                     groupedExpenses: groupedExpenses,
                                     dailyTotals: dailyTotals,
@@ -462,14 +551,84 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         _activeDateFilter == "all",
                                     hasMore: hasMore,
                                     onLoadMore: () {
-                                      setState(() => _displayLimit += 20);
+                                      setState(
+                                        () => _displayLimit += _pageSize,
+                                      );
                                     },
                                     onDeleteItem: _confirmDeleteExpense,
                                   ),
 
                                   const SizedBox(height: 20),
 
-                                  // 5. Expandable App Info Card
+                                  // 7. Settings: Theme Selector Card
+                                  const ThemeSelectorCard(),
+
+                                  const SizedBox(height: 10),
+
+                                  // 8. Settings: Cloud & Local Backups
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: colors.isDark
+                                          ? Colors.black.withValues(alpha: 0.35)
+                                          : colors.surface,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: colors.border,
+                                      ),
+                                      boxShadow: colors.isDark
+                                          ? []
+                                          : [colors.cardShadow],
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            SmoothOledRoute(
+                                              page: const BackupScreen(),
+                                            ),
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 12,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.cloud_sync_rounded,
+                                                color: colors.blueAccent,
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  "Cloud & Local Backups",
+                                                  style: TextStyle(
+                                                    color: colors.textPrimary,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.arrow_forward_ios_rounded,
+                                                color: colors.textMuted,
+                                                size: 12,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // Expandable App Info Card
                                   const AppInfoCard(),
                                 ],
                               ),
@@ -489,6 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildHeader(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 8, 16, 10),
       child: Row(
@@ -496,9 +656,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           Row(
             children: [
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white70,
+                  color: colors.textPrimary,
                   size: 18,
                 ),
                 onPressed: () {
@@ -509,12 +669,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                   }
                 },
               ),
-              const Text(
+              Text(
                 "Profile",
                 style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: colors.textPrimary,
                   letterSpacing: -0.3,
                 ),
               ),
@@ -527,25 +687,28 @@ class _ProfileScreenState extends State<ProfileScreen>
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
+              color: colors.isDark
+                  ? Colors.black.withValues(alpha: 0.45)
+                  : colors.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.12),
+                color: colors.border,
               ),
+              boxShadow: colors.isDark ? [] : [colors.cardShadow],
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.person_rounded,
-                  color: Colors.white70,
+                  color: colors.textSecondary,
                   size: 15,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   "Guest #8941",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: colors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class PersonalExpenseTimeline extends StatelessWidget {
   final Map<String, List<MapEntry<dynamic, Map>>> groupedExpenses;
@@ -8,10 +9,6 @@ class PersonalExpenseTimeline extends StatelessWidget {
   final bool hasMore;
   final VoidCallback onLoadMore;
   final void Function(dynamic key, Map item) onDeleteItem;
-
-  static const Color textMuted = Color(0xFFA1A1AA);
-  static const Color textMutedDark = Color(0xFF71717A);
-  static const Color redAccent = Color(0xFFFF5252);
 
   const PersonalExpenseTimeline({
     super.key,
@@ -26,6 +23,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     if (isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 36),
@@ -35,8 +34,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                 ? "Abhi tak koi kharcha add nahi kiya gaya hai.\n'+ Kharcha' button se add karein!"
                 : "Chune gaye filter me koi kharcha nahi mila.",
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: textMuted,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 12.5,
             ),
           ),
@@ -64,16 +63,18 @@ class PersonalExpenseTimeline extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
+                      color: colors.isDark
+                          ? Colors.black.withValues(alpha: 0.45)
+                          : colors.surfaceSecondary,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: colors.border,
                       ),
                     ),
                     child: Text(
                       dateLabel,
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -83,14 +84,14 @@ class PersonalExpenseTimeline extends StatelessWidget {
                   Expanded(
                     child: Container(
                       height: 1,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: colors.divider,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     "Total: ₹$dayTotal.00",
-                    style: const TextStyle(
-                      color: textMuted,
+                    style: TextStyle(
+                      color: colors.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -121,8 +122,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 14),
                         child: Text(
                           item["time"] ?? "00:00",
-                          style: const TextStyle(
-                            color: textMutedDark,
+                          style: TextStyle(
+                            color: colors.textMuted,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -154,7 +155,7 @@ class PersonalExpenseTimeline extends StatelessWidget {
                           Expanded(
                             child: Container(
                               width: 1.5,
-                              color: Colors.white.withValues(alpha: 0.10),
+                              color: colors.divider,
                             ),
                           ),
                       ],
@@ -172,11 +173,14 @@ class PersonalExpenseTimeline extends StatelessWidget {
                             vertical: 11,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: colors.isDark
+                                ? Colors.black.withValues(alpha: 0.35)
+                                : colors.surface,
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: colors.border,
                             ),
+                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
                           ),
                           child: Row(
                             children: [
@@ -186,8 +190,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                                   children: [
                                     Text(
                                       item["title"] ?? "Kharcha",
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -197,8 +201,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       "${item["sub"]?.isNotEmpty == true ? item["sub"] : cat} • ${item["time"] ?? 'Aaj'}",
-                                      style: const TextStyle(
-                                        color: textMuted,
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
                                         fontSize: 11,
                                       ),
                                       maxLines: 1,
@@ -210,10 +214,12 @@ class PersonalExpenseTimeline extends StatelessWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
+                                    Text(
                                     "-₹${item['amount']}.00",
-                                    style: const TextStyle(
-                                      color: redAccent,
+                                    style: TextStyle(
+                                      color: colors.isDark
+                                          ? colors.redAccent
+                                          : colors.redText,
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w900,
                                     ),
@@ -221,8 +227,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     item["mode"] ?? "Online UPI",
-                                    style: const TextStyle(
-                                      color: textMutedDark,
+                                    style: TextStyle(
+                                      color: colors.textMuted,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -241,27 +247,55 @@ class PersonalExpenseTimeline extends StatelessWidget {
           ];
         }),
 
-        // Load More Button
+        // View More Button
         if (hasMore) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Center(
-            child: TextButton.icon(
-              onPressed: onLoadMore,
-              icon: const Icon(
-                Icons.expand_more_rounded,
-                color: Colors.white70,
-                size: 18,
-              ),
-              label: const Text(
-                "Aur Kharcha Dekhein",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onLoadMore,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.isDark
+                        ? Colors.black.withValues(alpha: 0.45)
+                        : colors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: colors.border,
+                    ),
+                    boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "View More",
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: colors.greenAccent,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 6),
         ],
       ],
     );

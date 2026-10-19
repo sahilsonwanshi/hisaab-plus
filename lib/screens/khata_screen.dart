@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -7,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/friend_model.dart';
 import '../widgets/custom_toast.dart';
 import '../widgets/smooth_route.dart';
+import '../theme/app_colors.dart';
 import 'entry_form_screen.dart';
 import 'hisab_chat.dart';
 
@@ -25,13 +25,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   String _activeFilter = "Sabhi";
   String _searchQuery = "";
 
-  static const Color oledBg = Color(0xFF000000);
-  static const Color greenAccent = Color(0xFF00E676);
-  static const Color greenPillBg = Color(0xFF0B291A);
-  static const Color redAccent = Color(0xFFFF5252);
-  static const Color redPillBg = Color(0xFF2E1215);
-  static const Color textMuted = Color(0xFF888890);
-  static const Color textMutedDark = Color(0xFF55555C);
+
 
   static const List<String> availableTags = [
     'College',
@@ -76,11 +70,13 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   }
 
   void _showKhataOptionsBottomSheet(dynamic key, FriendModel dost) {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF16161A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: colors.border),
       ),
       builder: (bCtx) => SafeArea(
         child: Padding(
@@ -93,40 +89,40 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: colors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.chat_bubble_outline_rounded,
-                  color: greenAccent,
+                  color: colors.isDark ? colors.greenAccent : colors.greenText,
                 ),
                 title: Text(
                   dost.name,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colors.textPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 subtitle: Text(
                   "₹${dost.balance} net • ${dost.history.length} transactions",
-                  style: const TextStyle(color: textMuted, fontSize: 12),
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
                 ),
               ),
-              const Divider(color: Colors.white10),
+              Divider(color: colors.border),
               ListTile(
                 leading: const Icon(
                   Icons.cleaning_services_rounded,
                   color: Colors.amber,
                 ),
-                title: const Text(
+                title: Text(
                   "Clear Chat History",
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: colors.textPrimary),
                 ),
-                subtitle: const Text(
+                subtitle: Text(
                   "Sare statement delete karein aur balance ₹0 karein",
-                  style: TextStyle(color: textMuted, fontSize: 11),
+                  style: TextStyle(color: colors.textMuted, fontSize: 11),
                 ),
                 onTap: () {
                   Navigator.pop(bCtx);
@@ -146,20 +142,20 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 },
               ),
               ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.delete_forever_rounded,
-                  color: redAccent,
+                  color: colors.redText,
                 ),
-                title: const Text(
+                title: Text(
                   "Delete Pura Khata",
                   style: TextStyle(
-                    color: redAccent,
+                    color: colors.redText,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                subtitle: const Text(
+                subtitle: Text(
                   "Dost aur record list se permanent hatayein",
-                  style: TextStyle(color: textMuted, fontSize: 11),
+                  style: TextStyle(color: colors.textMuted, fontSize: 11),
                 ),
                 onTap: () {
                   Navigator.pop(bCtx);
@@ -195,52 +191,55 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: oledBg,
+      backgroundColor: colors.bg,
       body: Stack(
         children: [
-          // 1. Spiderman Background Image Layer
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.40,
-              child: Image.asset(
-                'assets/images/khata_screen_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
-              ),
-            ),
-          ),
-
-          // 2. Ambient Gradient Tint for Contrast
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.30),
-                    Colors.black.withOpacity(0.65),
-                  ],
+          if (colors.isDark) ...[
+            // 1. Spiderman Background Image Layer (Dark Mode Only)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.40,
+                child: Image.asset(
+                  'assets/images/khata_screen_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
                 ),
               ),
             ),
-          ),
+
+            // 2. Ambient Gradient Tint for Contrast
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.30),
+                      Colors.black.withValues(alpha: 0.65),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           // 3. Main Content
           SafeArea(
             child: Column(
               children: [
-                // Top Fixed Bar (Transparent Glass Look)
+                // Top Fixed Bar
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(right: 14, left: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 14, left: 2),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -249,17 +248,17 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: colors.textPrimary,
                                 letterSpacing: 1.1,
                               ),
                             ),
-                            SizedBox(width: 3),
+                            const SizedBox(width: 3),
                             Text(
                               "+",
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: greenAccent,
+                                color: colors.isDark ? colors.greenAccent : colors.greenText,
                               ),
                             ),
                           ],
@@ -270,32 +269,34 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                           height: 44,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.38),
+                            color: colors.isDark
+                                ? Colors.black.withValues(alpha: 0.38)
+                                : colors.surfaceSecondary,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.12),
+                              color: colors.border,
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.search_rounded,
                                 size: 18,
-                                color: textMuted,
+                                color: colors.textMuted,
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: TextField(
                                   onChanged: (val) =>
                                       setState(() => _searchQuery = val.trim()),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
                                     fontSize: 12.5,
                                   ),
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     hintText: "Search dost, khata...",
                                     hintStyle: TextStyle(
-                                      color: textMuted,
+                                      color: colors.textMuted,
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w400,
                                     ),
@@ -308,10 +309,10 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                 GestureDetector(
                                   onTap: () =>
                                       setState(() => _searchQuery = ""),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.close_rounded,
                                     size: 16,
-                                    color: textMuted,
+                                    color: colors.textMuted,
                                   ),
                                 ),
                             ],
@@ -366,14 +367,14 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                           "id": "Lena Hai",
                           "label": "Lena Hai",
                           "count": lenaCount,
-                          "color": greenAccent,
+                          "color": colors.isDark ? colors.greenAccent : colors.greenText,
                           "isTag": false,
                         },
                         {
                           "id": "Dena Hai",
                           "label": "Dena Hai",
                           "count": denaCount,
-                          "color": redAccent,
+                          "color": colors.isDark ? colors.redAccent : colors.redText,
                           "isTag": false,
                         },
                       ];
@@ -436,8 +437,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
 
                       return RefreshIndicator(
                         onRefresh: _onRefresh,
-                        color: greenAccent,
-                        backgroundColor: const Color(0xFF1C1C1F),
+                        color: colors.isDark ? colors.greenAccent : colors.greenText,
+                        backgroundColor: colors.surface,
                         displacement: 20,
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(
@@ -456,11 +457,12 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                   18,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.38),
+                                  color: colors.surface,
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.12),
+                                    color: colors.border,
                                   ),
+                                  boxShadow: colors.isDark ? [] : [colors.cardShadow],
                                 ),
                                 child: Column(
                                   children: [
@@ -471,13 +473,9 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                           height: 96,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: Colors.black.withOpacity(
-                                              0.4,
-                                            ),
+                                            color: colors.surfaceSecondary,
                                             border: Border.all(
-                                              color: Colors.white.withOpacity(
-                                                0.08,
-                                              ),
+                                              color: colors.border,
                                               width: 1,
                                             ),
                                           ),
@@ -489,15 +487,16 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                 painter: _NetRadialChartPainter(
                                                   greenFraction: greenFrac,
                                                   redFraction: redFrac,
+                                                  colors: colors,
                                                 ),
                                               ),
                                               Column(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  const Text(
+                                                  Text(
                                                     "NET",
                                                     style: TextStyle(
-                                                      color: Color(0xFF888890),
+                                                      color: colors.textMuted,
                                                       fontSize: 9.5,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -509,8 +508,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                     "${netBalance >= 0 ? '+₹' : '-₹'}${netBalance.abs()}",
                                                     style: TextStyle(
                                                       color: netBalance >= 0
-                                                          ? greenAccent
-                                                          : redAccent,
+                                                          ? (colors.isDark ? colors.greenAccent : colors.greenText)
+                                                          : (colors.isDark ? colors.redAccent : colors.redText),
                                                       fontSize: 15.5,
                                                       fontWeight:
                                                           FontWeight.w900,
@@ -533,17 +532,17 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                     width: 7,
                                                     height: 7,
                                                     decoration:
-                                                        const BoxDecoration(
-                                                          color: greenAccent,
+                                                        BoxDecoration(
+                                                          color: colors.isDark ? colors.greenAccent : colors.greenText,
                                                           shape:
                                                               BoxShape.circle,
                                                         ),
                                                   ),
                                                   const SizedBox(width: 6),
-                                                  const Text(
+                                                  Text(
                                                     "Lena Hai",
                                                     style: TextStyle(
-                                                      color: textMuted,
+                                                      color: colors.textMuted,
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w500,
@@ -557,8 +556,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                           vertical: 2,
                                                         ),
                                                     decoration: BoxDecoration(
-                                                      color: greenPillBg
-                                                          .withOpacity(0.8),
+                                                      color: colors.greenPillBg,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             8,
@@ -566,8 +564,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                     ),
                                                     child: Text(
                                                       "$lenaCount log",
-                                                      style: const TextStyle(
-                                                        color: greenAccent,
+                                                      style: TextStyle(
+                                                        color: colors.greenText,
                                                         fontSize: 10,
                                                         fontWeight:
                                                             FontWeight.bold,
@@ -579,8 +577,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                               const SizedBox(height: 3),
                                               Text(
                                                 "₹$totalLena.00",
-                                                style: const TextStyle(
-                                                  color: greenAccent,
+                                                style: TextStyle(
+                                                  color: colors.isDark ? colors.greenAccent : colors.greenText,
                                                   fontSize: 19,
                                                   fontWeight: FontWeight.w900,
                                                 ),
@@ -592,17 +590,17 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                     width: 7,
                                                     height: 7,
                                                     decoration:
-                                                        const BoxDecoration(
-                                                          color: redAccent,
+                                                        BoxDecoration(
+                                                          color: colors.isDark ? colors.redAccent : colors.redText,
                                                           shape:
                                                               BoxShape.circle,
                                                         ),
                                                   ),
                                                   const SizedBox(width: 6),
-                                                  const Text(
+                                                  Text(
                                                     "Dena Hai",
                                                     style: TextStyle(
-                                                      color: textMuted,
+                                                      color: colors.textMuted,
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w500,
@@ -616,8 +614,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                           vertical: 2,
                                                         ),
                                                     decoration: BoxDecoration(
-                                                      color: redPillBg
-                                                          .withOpacity(0.8),
+                                                      color: colors.redPillBg,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             8,
@@ -625,8 +622,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                     ),
                                                     child: Text(
                                                       "$denaCount log",
-                                                      style: const TextStyle(
-                                                        color: redAccent,
+                                                      style: TextStyle(
+                                                        color: colors.redText,
                                                         fontSize: 10,
                                                         fontWeight:
                                                             FontWeight.bold,
@@ -638,8 +635,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                               const SizedBox(height: 3),
                                               Text(
                                                 "₹$totalDena.00",
-                                                style: const TextStyle(
-                                                  color: redAccent,
+                                                style: TextStyle(
+                                                  color: colors.isDark ? colors.redAccent : colors.redText,
                                                   fontSize: 19,
                                                   fontWeight: FontWeight.w900,
                                                 ),
@@ -658,31 +655,27 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                             horizontal: 14,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.35,
-                                            ),
+                                            color: colors.surfaceSecondary,
                                             borderRadius: BorderRadius.circular(
                                               22,
                                             ),
                                             border: Border.all(
-                                              color: Colors.white.withOpacity(
-                                                0.08,
-                                              ),
+                                              color: colors.border,
                                             ),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(
+                                              Icon(
                                                 Icons.credit_card_outlined,
-                                                color: textMuted,
+                                                color: colors.textMuted,
                                                 size: 16,
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
                                                 "${allFriends.length} Dost",
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: colors.textPrimary,
                                                   fontSize: 12.5,
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -702,23 +695,23 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                               horizontal: 20,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color: colors.isDark ? Colors.white : const Color(0xFF0F172A),
                                               borderRadius:
                                                   BorderRadius.circular(24),
                                             ),
-                                            child: const Row(
+                                            child: Row(
                                               children: [
                                                 Icon(
                                                   Icons
                                                       .person_add_alt_1_rounded,
                                                   size: 16,
-                                                  color: Colors.black,
+                                                  color: colors.isDark ? Colors.black : Colors.white,
                                                 ),
-                                                SizedBox(width: 6),
+                                                const SizedBox(width: 6),
                                                 Text(
                                                   "+ Naya Khata",
                                                   style: TextStyle(
-                                                    color: Colors.black,
+                                                    color: colors.isDark ? Colors.black : Colors.white,
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w800,
                                                   ),
@@ -744,6 +737,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                     return Padding(
                                       padding: const EdgeInsets.only(right: 8),
                                       child: _buildFilterChip(
+                                        colors: colors,
                                         id: chip["id"] as String,
                                         label: chip["label"] as String,
                                         count: chip["count"] as int,
@@ -757,10 +751,10 @@ class _DostKhataScreenState extends State<DostKhataScreen>
 
                               const SizedBox(height: 22),
 
-                              const Text(
+                              Text(
                                 "Active Dost",
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: colors.textPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -769,18 +763,103 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                               const SizedBox(height: 12),
 
                               if (filteredList.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 40),
-                                  child: Center(
-                                    child: Text(
-                                      "Koi dost nahi mila",
-                                      style: TextStyle(
-                                        color: textMuted,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                )
+                                allFriends.isEmpty
+                                    ? Container(
+                                        width: double.infinity,
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 24,
+                                        ),
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: colors.surface,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: colors.border,
+                                          ),
+                                          boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(14),
+                                              decoration: BoxDecoration(
+                                                color: colors.greenPillBg,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.people_outline_rounded,
+                                                color: colors.greenText,
+                                                size: 32,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 14),
+                                            Text(
+                                              "Aapka Khata Khali Hai",
+                                              style: TextStyle(
+                                                color: colors.textPrimary,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              "Dosto ke sath len-den ka hisaab clear aur safe rakhne ke liye pehla dost jodein.",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: colors.textMuted,
+                                                fontSize: 12.5,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 18),
+                                            ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: colors.isDark ? colors.greenAccent : colors.greenText,
+                                                foregroundColor: colors.isDark ? Colors.black : Colors.white,
+                                                elevation: 0,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 20,
+                                                  vertical: 12,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                ),
+                                              ),
+                                              icon: const Icon(
+                                                Icons.person_add_alt_1_rounded,
+                                                size: 18,
+                                              ),
+                                              label: const Text(
+                                                "Pehla Dost Jodein",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              onPressed: _openNayaKhata,
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 40,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            _searchQuery.isNotEmpty
+                                                ? "'$_searchQuery' naam ka koi dost nahi mila"
+                                                : "Koi dost nahi mila",
+                                            style: TextStyle(
+                                              color: colors.textMuted,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      )
                               else
                                 ...filteredList.map((entry) {
                                   final key = entry.key;
@@ -800,6 +879,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                   }
 
                                   return _buildDostTile(
+                                    colors: colors,
                                     initials: _getInitials(dost.name),
                                     name: dost.name,
                                     desc: dost.desc.isNotEmpty
@@ -833,6 +913,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   }
 
   Widget _buildFilterChip({
+    required AppColors colors,
     required String id,
     required String label,
     required int count,
@@ -840,25 +921,41 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     required bool isTag,
   }) {
     final bool isSelected = _activeFilter == id;
+    final Color selectedBg = colors.isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color selectedFg = colors.isDark ? Colors.black : Colors.white;
+
+    Color unselectedBg;
+    BorderSide unselectedBorder;
+    Color unselectedFg;
+
+    if (isTag) {
+      unselectedBg = colors.isDark
+          ? const Color(0xFF0C1929).withValues(alpha: 0.65)
+          : const Color(0xFFE0F2FE);
+      unselectedBorder = BorderSide(
+        color: colors.isDark
+            ? const Color(0xFF0284C7).withValues(alpha: 0.4)
+            : const Color(0xFFBAE6FD),
+      );
+      unselectedFg = colors.isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
+    } else {
+      unselectedBg = colors.surfaceSecondary;
+      unselectedBorder = BorderSide(color: colors.border);
+      unselectedFg = colors.textMuted;
+    }
+
     return GestureDetector(
       onTap: () => setState(() => _activeFilter = id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white
-              : (isTag
-                    ? const Color(0xFF0C1929).withOpacity(0.65)
-                    : Colors.black.withOpacity(0.35)),
+          color: isSelected ? selectedBg : unselectedBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? Colors.white
-                : (isTag
-                      ? const Color(0xFF0284C7).withOpacity(0.4)
-                      : Colors.white.withOpacity(0.10)),
+          border: Border.fromBorderSide(
+            isSelected ? BorderSide(color: selectedBg) : unselectedBorder,
           ),
+          boxShadow: (!isSelected && !colors.isDark) ? [colors.cardShadow] : [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -867,7 +964,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
               Icon(
                 Icons.tag_rounded,
                 size: 12,
-                color: isSelected ? Colors.black : const Color(0xFF38BDF8),
+                color: isSelected ? selectedFg : unselectedFg,
               ),
               const SizedBox(width: 4),
             ] else if (dotColor != null) ...[
@@ -875,7 +972,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.black : dotColor,
+                  color: isSelected ? selectedFg : dotColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -884,8 +981,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
-                  color: Colors.black,
+                decoration: BoxDecoration(
+                  color: selectedFg,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -894,9 +991,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
             Text(
               label,
               style: TextStyle(
-                color: isSelected
-                    ? Colors.black
-                    : (isTag ? const Color(0xFF38BDF8) : textMuted),
+                color: isSelected ? selectedFg : unselectedFg,
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
@@ -905,7 +1000,9 @@ class _DostKhataScreenState extends State<DostKhataScreen>
             Text(
               "$count",
               style: TextStyle(
-                color: isSelected ? Colors.black87 : textMutedDark,
+                color: isSelected
+                    ? selectedFg.withValues(alpha: 0.8)
+                    : colors.textMuted,
                 fontSize: 11.5,
                 fontWeight: FontWeight.bold,
               ),
@@ -917,6 +1014,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
   }
 
   Widget _buildDostTile({
+    required AppColors colors,
     required String initials,
     required String name,
     required String desc,
@@ -929,15 +1027,18 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     required VoidCallback onLongPress,
   }) {
     final Color badgeColor = isSettled
-        ? textMuted
-        : (isLena ? greenAccent : redAccent);
+        ? colors.textMuted
+        : (isLena
+            ? (colors.isDark ? colors.greenAccent : colors.greenText)
+            : (colors.isDark ? colors.redAccent : colors.redText));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.isDark ? [] : [colors.cardShadow],
       ),
       child: Material(
         color: Colors.transparent,
@@ -954,14 +1055,14 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.08),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    color: colors.surfaceSecondary,
+                    border: Border.all(color: colors.border),
                   ),
                   child: Center(
                     child: Text(
                       initials,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
@@ -975,8 +1076,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -984,7 +1085,7 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                       const SizedBox(height: 3),
                       Text(
                         "$desc • $time",
-                        style: const TextStyle(color: textMuted, fontSize: 11),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -996,8 +1097,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                   children: [
                     Text(
                       "₹$amount",
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1025,10 +1126,12 @@ class _DostKhataScreenState extends State<DostKhataScreen>
 class _NetRadialChartPainter extends CustomPainter {
   final double greenFraction;
   final double redFraction;
+  final AppColors colors;
 
   _NetRadialChartPainter({
     required this.greenFraction,
     required this.redFraction,
+    required this.colors,
   });
 
   @override
@@ -1038,7 +1141,9 @@ class _NetRadialChartPainter extends CustomPainter {
     const strokeWidth = 8.0;
 
     final trackPaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = colors.isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : colors.border
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..isAntiAlias = true;
@@ -1048,14 +1153,14 @@ class _NetRadialChartPainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius);
 
     final greenPaint = Paint()
-      ..color = const Color(0xFF00E676)
+      ..color = colors.isDark ? colors.greenAccent : colors.greenText
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = strokeWidth
       ..isAntiAlias = true;
 
     final redPaint = Paint()
-      ..color = const Color(0xFFFF5252)
+      ..color = colors.isDark ? colors.redAccent : colors.redText
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = strokeWidth
@@ -1085,5 +1190,6 @@ class _NetRadialChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _NetRadialChartPainter oldDelegate) =>
       oldDelegate.greenFraction != greenFraction ||
-      oldDelegate.redFraction != redFraction;
+      oldDelegate.redFraction != redFraction ||
+      oldDelegate.colors != colors;
 }

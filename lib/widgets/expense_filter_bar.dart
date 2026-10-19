@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class ExpenseFilterBar extends StatelessWidget {
   final String activeDateFilter;
@@ -7,14 +8,11 @@ class ExpenseFilterBar extends StatelessWidget {
   final VoidCallback onPickCustomDate;
   final VoidCallback onClearCustomDate;
 
-  final String activeCategoryFilter;
-  final List<String> categories;
-  final List<Map> rawItems;
-  final ValueChanged<String> onCategoryFilterChanged;
-
-  static const Color textMuted = Color(0xFFA1A1AA);
-  static const Color textMutedDark = Color(0xFF71717A);
-  static const Color greenAccent = Color(0xFF00E676);
+  // Optional Category Filter
+  final String? activeCategoryFilter;
+  final List<String>? categories;
+  final List<Map>? rawItems;
+  final ValueChanged<String>? onCategoryFilterChanged;
 
   const ExpenseFilterBar({
     super.key,
@@ -23,225 +21,328 @@ class ExpenseFilterBar extends StatelessWidget {
     required this.onDateFilterChanged,
     required this.onPickCustomDate,
     required this.onClearCustomDate,
-    required this.activeCategoryFilter,
-    required this.categories,
-    required this.rawItems,
-    required this.onCategoryFilterChanged,
+    this.activeCategoryFilter,
+    this.categories,
+    this.rawItems,
+    this.onCategoryFilterChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. DATE FILTER ROW
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
+        // 1. DATE FILTER SEGMENT BAR
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: colors.isDark
+                ? Colors.black.withValues(alpha: 0.38)
+                : colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colors.border,
+              width: 1,
+            ),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
           child: Row(
             children: [
-              _buildDateChip(
-                id: "all",
-                label: "Sabhi Din",
-                icon: Icons.calendar_today_rounded,
+              // 1. Sabhi Din
+              Expanded(
+                child: _buildSegment(
+                  context: context,
+                  id: "all",
+                  label: "Sabhi",
+                  icon: Icons.calendar_today_rounded,
+                ),
               ),
-              _buildDateChip(
-                id: "today",
-                label: "Aaj",
-                icon: Icons.today_rounded,
+              const SizedBox(width: 4),
+
+              // 2. Aaj
+              Expanded(
+                child: _buildSegment(
+                  context: context,
+                  id: "today",
+                  label: "Aaj",
+                  icon: Icons.today_rounded,
+                ),
               ),
-              _buildDateChip(
-                id: "yesterday",
-                label: "Kal",
-                icon: Icons.history_rounded,
+              const SizedBox(width: 4),
+
+              // 3. Kal
+              Expanded(
+                child: _buildSegment(
+                  context: context,
+                  id: "yesterday",
+                  label: "Kal",
+                  icon: Icons.history_rounded,
+                ),
               ),
-              // Custom Date Picker Chip
-              GestureDetector(
-                onTap: onPickCustomDate,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: activeDateFilter == "custom"
-                        ? const Color(0xFF0C1929)
-                        : Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: activeDateFilter == "custom"
-                          ? const Color(0xFF38BDF8)
-                          : Colors.white.withValues(alpha: 0.10),
+              const SizedBox(width: 4),
+
+              // 4. Custom Date Picker Segment
+              Expanded(
+                child: _buildCustomSegment(context),
+              ),
+            ],
+          ),
+        ),
+
+        // 2. CATEGORY FILTER CAPSULES
+        if (categories != null && onCategoryFilterChanged != null) ...[
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: categories!.map((cat) {
+                final isSel = activeCategoryFilter == cat;
+                final count = cat == "Sabhi"
+                    ? (rawItems?.length ?? 0)
+                    : (rawItems
+                            ?.where(
+                              (e) =>
+                                  (e["category"] ?? "")
+                                      .toString()
+                                      .toLowerCase() ==
+                                  cat.toLowerCase(),
+                            )
+                            .length ??
+                        0);
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => onCategoryFilterChanged!(cat),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSel
+                            ? (colors.isDark ? Colors.white : colors.greenAccent)
+                            : (colors.isDark
+                                ? Colors.black.withValues(alpha: 0.35)
+                                : colors.surface),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSel
+                              ? (colors.isDark ? Colors.white : colors.greenAccent)
+                              : colors.border,
+                        ),
+                        boxShadow: (!isSel && !colors.isDark)
+                            ? [colors.cardShadow]
+                            : [],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isSel) ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: colors.isDark ? Colors.black : Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            cat,
+                            style: TextStyle(
+                              color: isSel
+                                  ? (colors.isDark ? Colors.black : Colors.white)
+                                  : colors.textSecondary,
+                              fontSize: 11.5,
+                              fontWeight:
+                                  isSel ? FontWeight.bold : FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            "$count",
+                            style: TextStyle(
+                              color: isSel
+                                  ? (colors.isDark
+                                      ? Colors.black87
+                                      : Colors.white70)
+                                  : colors.textMuted,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit_calendar_rounded,
-                        size: 13,
-                        color: activeDateFilter == "custom"
-                            ? const Color(0xFF38BDF8)
-                            : textMuted,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        selectedCustomDate != null && activeDateFilter == "custom"
-                            ? "${selectedCustomDate!.day}/${selectedCustomDate!.month}/${selectedCustomDate!.year}"
-                            : "Date Chunein",
-                        style: TextStyle(
-                          color: activeDateFilter == "custom"
-                              ? const Color(0xFF38BDF8)
-                              : textMuted,
-                          fontSize: 11,
-                          fontWeight: activeDateFilter == "custom"
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
-                      ),
-                      if (activeDateFilter == "custom") ...[
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: onClearCustomDate,
-                          child: const Icon(
-                            Icons.close_rounded,
-                            size: 13,
-                            color: Color(0xFF38BDF8),
-                          ),
-                        ),
-                      ],
-                    ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSegment({
+    required BuildContext context,
+    required String id,
+    required String label,
+    required IconData icon,
+  }) {
+    final bool isSelected = activeDateFilter == id;
+    final colors = context.colors;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onDateFilterChanged(id),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (colors.isDark
+                    ? colors.greenAccent.withValues(alpha: 0.16)
+                    : colors.greenPillBg)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? (colors.isDark
+                      ? colors.greenAccent.withValues(alpha: 0.35)
+                      : colors.greenPillBorder)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 13,
+                color: isSelected
+                    ? (colors.isDark ? colors.greenAccent : colors.greenText)
+                    : colors.textMuted,
+              ),
+              const SizedBox(width: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected
+                        ? (colors.isDark ? Colors.white : colors.greenText)
+                        : colors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
         ),
-
-        const SizedBox(height: 10),
-
-        // 2. CATEGORY FILTER CAPSULES
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: categories.map((cat) {
-              final isSel = activeCategoryFilter == cat;
-              final count = cat == "Sabhi"
-                  ? rawItems.length
-                  : rawItems
-                      .where(
-                        (e) =>
-                            (e["category"] ?? "")
-                                .toString()
-                                .toLowerCase() ==
-                            cat.toLowerCase(),
-                      )
-                      .length;
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => onCategoryFilterChanged(cat),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isSel
-                          ? Colors.white
-                          : Colors.black.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSel
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.10),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isSel) ...[
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(
-                          cat,
-                          style: TextStyle(
-                            color: isSel ? Colors.black : textMuted,
-                            fontSize: 11.5,
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          "$count",
-                          style: TextStyle(
-                            color: isSel ? Colors.black87 : textMutedDark,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildDateChip({
-    required String id,
-    required String label,
-    required IconData icon,
-  }) {
-    final isSel = activeDateFilter == id;
+  Widget _buildCustomSegment(BuildContext context) {
+    final bool isSelected = activeDateFilter == "custom";
+    final colors = context.colors;
+    final String label = (isSelected && selectedCustomDate != null)
+        ? "${selectedCustomDate!.day} ${_monthName(selectedCustomDate!.month)}"
+        : "Date";
 
-    return GestureDetector(
-      onTap: () => onDateFilterChanged(id),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSel
-              ? greenAccent.withValues(alpha: 0.15)
-              : Colors.black.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSel
-                ? greenAccent
-                : Colors.white.withValues(alpha: 0.10),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPickCustomDate,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (colors.isDark
+                    ? colors.blueAccent.withValues(alpha: 0.16)
+                    : colors.blueAccent.withValues(alpha: 0.12))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? colors.blueAccent.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 13,
-              color: isSel ? greenAccent : textMuted,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSel ? greenAccent : textMuted,
-                fontSize: 11,
-                fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_month_rounded,
+                size: 13,
+                color: isSelected ? colors.blueAccent : colors.textMuted,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected
+                          ? (colors.isDark ? Colors.white : colors.blueAccent)
+                          : colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              if (isSelected && selectedCustomDate != null) ...[
+                const SizedBox(width: 2),
+                GestureDetector(
+                  onTap: onClearCustomDate,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 13,
+                      color: colors.blueAccent,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _monthName(int month) {
+    const months = [
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ];
+    if (month >= 1 && month <= 12) return months[month];
+    return "";
   }
 }

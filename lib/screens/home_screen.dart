@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -10,6 +9,7 @@ import '../widgets/smooth_route.dart';
 import 'entry_form_screen.dart';
 import 'hisab_chat.dart';
 import 'khata_screen.dart';
+import '../theme/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
   final ValueChanged<int>? onTabChange;
@@ -26,14 +26,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
-  static const Color oledBg = Color(0xFF000000);
   static const Color greenAccent = Color(0xFF00E676);
   static const Color greenPillBg = Color(0xFF0B291A);
-  static const Color redAccent = Color(0xFFFF5252);
-  static const Color redPillBg = Color(0xFF2E1215);
   static const Color textMuted = Color(0xFF888890);
   static const Color textMutedDark = Color(0xFF55555C);
-  static const Color borderCustom = Color(0xFF242429);
 
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = "";
@@ -138,12 +134,13 @@ class _HomeScreenState extends State<HomeScreen>
     bool isLena,
     bool isKharcha,
   ) {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF16161A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        side: BorderSide(color: borderCustom),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: colors.border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -163,8 +160,8 @@ class _HomeScreenState extends State<HomeScreen>
                             tx.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: colors.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -174,8 +171,8 @@ class _HomeScreenState extends State<HomeScreen>
                             "₹${tx.amount} • ${tx.subtitle}",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: textMuted,
+                            style: TextStyle(
+                              color: colors.textMuted,
                               fontSize: 12,
                             ),
                           ),
@@ -188,13 +185,13 @@ class _HomeScreenState extends State<HomeScreen>
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.40),
+                          color: colors.surfaceSecondary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: borderCustom),
+                          border: Border.all(color: colors.border),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
-                          color: textMuted,
+                          color: colors.textMuted,
                           size: 18,
                         ),
                       ),
@@ -202,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Divider(height: 1, color: Colors.white10),
+                Divider(height: 1, color: colors.border),
                 const SizedBox(height: 10),
                 if (!isKharcha)
                   ListTile(
@@ -211,26 +208,26 @@ class _HomeScreenState extends State<HomeScreen>
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: greenPillBg,
+                        color: colors.greenPillBg,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.open_in_new_rounded,
-                        color: greenAccent,
+                        color: colors.greenText,
                         size: 20,
                       ),
                     ),
-                    title: const Text(
+                    title: Text(
                       "Open Hisaab Chat",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       "Is dost ki complete chat & ledger kholein",
-                      style: TextStyle(color: textMuted, fontSize: 11),
+                      style: TextStyle(color: colors.textMuted, fontSize: 11),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -243,26 +240,26 @@ class _HomeScreenState extends State<HomeScreen>
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: redPillBg,
+                      color: colors.redPillBg,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.delete_outline_rounded,
-                      color: redAccent,
+                      color: colors.redText,
                       size: 20,
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     "Delete Record",
                     style: TextStyle(
-                      color: redAccent,
+                      color: colors.redText,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     "Is hisaab ko local ledger se hata dein",
-                    style: TextStyle(color: textMuted, fontSize: 11),
+                    style: TextStyle(color: colors.textMuted, fontSize: 11),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -302,28 +299,30 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colors = context.colors;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final bool isFutureDisabled = _isSameDay(_selectedDate, today);
 
     return Scaffold(
-      backgroundColor: oledBg,
+      backgroundColor: colors.bg,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png)
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.42,
-              child: Image.asset(
-                'assets/images/home_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png) - Dark mode only
+          if (colors.isDark)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.42,
+                child: Image.asset(
+                  'assets/images/home_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
           // 2. SOFT AMBIENT GRADIENT OVERLAY
           Positioned.fill(
@@ -332,11 +331,16 @@ class _HomeScreenState extends State<HomeScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.35),
-                    Colors.black.withOpacity(0.20),
-                    Colors.black.withOpacity(0.65),
-                  ],
+                  colors: colors.isDark
+                      ? [
+                          Colors.black.withValues(alpha: 0.35),
+                          Colors.black.withValues(alpha: 0.20),
+                          Colors.black.withValues(alpha: 0.65),
+                        ]
+                      : [
+                          colors.bg.withValues(alpha: 0.6),
+                          colors.bg,
+                        ],
                   stops: const [0.0, 0.40, 1.0],
                 ),
               ),
@@ -355,8 +359,8 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(right: 14, left: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 14, left: 2),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -365,17 +369,17 @@ class _HomeScreenState extends State<HomeScreen>
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: colors.textPrimary,
                                 letterSpacing: 1.1,
                               ),
                             ),
-                            SizedBox(width: 3),
+                            const SizedBox(width: 3),
                             Text(
                               "+",
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: greenAccent,
+                                color: colors.greenAccent,
                               ),
                             ),
                           ],
@@ -386,18 +390,21 @@ class _HomeScreenState extends State<HomeScreen>
                           height: 44,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.38),
+                            color: colors.isDark
+                                ? Colors.black.withValues(alpha: 0.38)
+                                : colors.surface,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.12),
+                              color: colors.border,
                             ),
+                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.search_rounded,
                                 size: 18,
-                                color: textMuted,
+                                color: colors.textMuted,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -408,14 +415,14 @@ class _HomeScreenState extends State<HomeScreen>
                                       _searchQuery = val.trim();
                                     });
                                   },
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
                                     fontSize: 12.5,
                                   ),
                                   decoration: InputDecoration(
                                     hintText: "Search dost, kharcha...",
-                                    hintStyle: const TextStyle(
-                                      color: textMuted,
+                                    hintStyle: TextStyle(
+                                      color: colors.textMuted,
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w400,
                                     ),
@@ -427,10 +434,10 @@ class _HomeScreenState extends State<HomeScreen>
                                               _searchCtrl.clear();
                                               setState(() => _searchQuery = "");
                                             },
-                                            child: const Icon(
+                                            child: Icon(
                                               Icons.close_rounded,
                                               size: 16,
-                                              color: textMuted,
+                                              color: colors.textMuted,
                                             ),
                                           )
                                         : null,
@@ -454,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Theme(
                                 data: Theme.of(
                                   context,
-                                ).copyWith(cardColor: const Color(0xFF1E1E22)),
+                                ).copyWith(cardColor: colors.surface),
                                 child: PopupMenuButton<String>(
                                   icon: const Icon(
                                     Icons.more_vert_rounded,
@@ -464,6 +471,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   padding: EdgeInsets.zero,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
+                                    side: BorderSide(color: colors.border),
                                   ),
                                   onSelected: (value) {
                                     if (value == "settings") {
@@ -482,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     }
                                   },
                                   itemBuilder: (BuildContext context) => [
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: "sync",
                                       height: 38,
                                       child: Row(
@@ -496,14 +504,14 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             "Sync State",
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: colors.textPrimary,
                                               fontSize: 12.5,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: "settings",
                                       height: 38,
                                       child: Row(
@@ -517,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           Text(
                                             "Settings",
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: colors.textPrimary,
                                               fontSize: 12.5,
                                             ),
                                           ),
@@ -541,8 +549,8 @@ class _HomeScreenState extends State<HomeScreen>
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _onRefresh,
-                    color: greenAccent,
-                    backgroundColor: Colors.black87,
+                    color: colors.isDark ? colors.greenAccent : colors.greenText,
+                    backgroundColor: colors.surface,
                     displacement: 20,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(
@@ -589,11 +597,16 @@ class _HomeScreenState extends State<HomeScreen>
                                   20,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.38),
+                                  color: colors.isDark
+                                      ? Colors.black.withValues(alpha: 0.38)
+                                      : colors.surface,
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.12),
+                                    color: colors.border,
                                   ),
+                                  boxShadow: colors.isDark
+                                      ? []
+                                      : [colors.cardShadow],
                                 ),
                                 child: Column(
                                   children: [
@@ -601,10 +614,10 @@ class _HomeScreenState extends State<HomeScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           "Lena Hai (Receivable)",
                                           style: TextStyle(
-                                            color: textMuted,
+                                            color: colors.textSecondary,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -613,8 +626,8 @@ class _HomeScreenState extends State<HomeScreen>
                                           children: [
                                             Text(
                                               "₹$totalLena",
-                                              style: const TextStyle(
-                                                color: greenAccent,
+                                              style: TextStyle(
+                                                color: colors.isDark ? colors.greenAccent : colors.greenText,
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w800,
                                               ),
@@ -627,16 +640,19 @@ class _HomeScreenState extends State<HomeScreen>
                                                     vertical: 3,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: greenPillBg.withOpacity(
-                                                  0.8,
-                                                ),
+                                                color: colors.isDark
+                                                    ? const Color(0xFF0B291A).withValues(alpha: 0.8)
+                                                    : colors.greenPillBg,
                                                 borderRadius:
                                                     BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: colors.greenPillBorder,
+                                                ),
                                               ),
                                               child: Text(
                                                 "+₹$dateLena",
-                                                style: const TextStyle(
-                                                  color: greenAccent,
+                                                style: TextStyle(
+                                                  color: colors.greenText,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w700,
                                                 ),
@@ -651,10 +667,10 @@ class _HomeScreenState extends State<HomeScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           "Dena Hai (Payable)",
                                           style: TextStyle(
-                                            color: textMuted,
+                                            color: colors.textSecondary,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -663,8 +679,8 @@ class _HomeScreenState extends State<HomeScreen>
                                           children: [
                                             Text(
                                               "₹$totalDena",
-                                              style: const TextStyle(
-                                                color: redAccent,
+                                              style: TextStyle(
+                                                color: colors.isDark ? colors.redAccent : colors.redText,
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w800,
                                               ),
@@ -677,16 +693,19 @@ class _HomeScreenState extends State<HomeScreen>
                                                     vertical: 3,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: redPillBg.withOpacity(
-                                                  0.8,
-                                                ),
+                                                color: colors.isDark
+                                                    ? const Color(0xFF2E1215).withValues(alpha: 0.8)
+                                                    : colors.redPillBg,
                                                 borderRadius:
                                                     BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: colors.redPillBorder,
+                                                ),
                                               ),
                                               child: Text(
                                                 "-₹$dateDena",
-                                                style: const TextStyle(
-                                                  color: redAccent,
+                                                style: TextStyle(
+                                                  color: colors.redText,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w700,
                                                 ),
@@ -708,24 +727,23 @@ class _HomeScreenState extends State<HomeScreen>
                                             child: Container(
                                               height: 48,
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withOpacity(
-                                                  0.35,
-                                                ),
+                                                color: colors.isDark
+                                                    ? Colors.black.withValues(alpha: 0.35)
+                                                    : colors.surfaceSecondary,
                                                 borderRadius:
                                                     BorderRadius.circular(26),
                                                 border: Border.all(
-                                                  color: Colors.white
-                                                      .withOpacity(0.08),
+                                                  color: colors.border,
                                                 ),
                                               ),
-                                              child: const Row(
+                                              child: Row(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   Text(
                                                     "Khata",
                                                     style: TextStyle(
-                                                      color: Colors.white,
+                                                      color: colors.textPrimary,
                                                       fontSize: 13.5,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -735,7 +753,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   Icon(
                                                     Icons.arrow_outward_rounded,
                                                     size: 14,
-                                                    color: Colors.white70,
+                                                    color: colors.textSecondary,
                                                   ),
                                                 ],
                                               ),
@@ -752,28 +770,31 @@ class _HomeScreenState extends State<HomeScreen>
                                             child: Container(
                                               height: 48,
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: colors.plusButtonBg,
                                                 borderRadius:
                                                     BorderRadius.circular(26),
+                                                boxShadow: colors.isDark
+                                                    ? []
+                                                    : [colors.cardShadow],
                                               ),
-                                              child: const Row(
+                                              child: Row(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   Text(
                                                     "Naya Kharcha",
                                                     style: TextStyle(
-                                                      color: Colors.black,
+                                                      color: colors.plusButtonIcon,
                                                       fontSize: 13.5,
                                                       fontWeight:
                                                           FontWeight.w800,
                                                     ),
                                                   ),
-                                                  SizedBox(width: 4),
+                                                  const SizedBox(width: 4),
                                                   Icon(
                                                     Icons.add_rounded,
                                                     size: 18,
-                                                    color: Colors.black,
+                                                    color: colors.plusButtonIcon,
                                                   ),
                                                 ],
                                               ),
@@ -796,10 +817,10 @@ class _HomeScreenState extends State<HomeScreen>
                             children: [
                               Row(
                                 children: [
-                                  const Text(
+                                  Text(
                                     "Hisaab History",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: colors.textPrimary,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -811,18 +832,18 @@ class _HomeScreenState extends State<HomeScreen>
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.35),
+                                      color: colors.isDark ? Colors.black.withValues(alpha: 0.35) : colors.surfaceSecondary,
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: Colors.white.withOpacity(0.10),
+                                        color: colors.border,
                                       ),
                                     ),
                                     child: Text(
                                       _isAllDateSelected
                                           ? "All History"
                                           : "Daily View",
-                                      style: const TextStyle(
-                                        color: greenAccent,
+                                      style: TextStyle(
+                                        color: colors.isDark ? colors.greenAccent : colors.greenText,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -833,8 +854,8 @@ class _HomeScreenState extends State<HomeScreen>
                               InkWell(
                                 onTap: _openKhata,
                                 borderRadius: BorderRadius.circular(12),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
                                     vertical: 2,
                                   ),
@@ -843,16 +864,16 @@ class _HomeScreenState extends State<HomeScreen>
                                       Text(
                                         "All Khata",
                                         style: TextStyle(
-                                          color: textMuted,
+                                          color: colors.textMuted,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                      SizedBox(width: 2),
+                                      const SizedBox(width: 2),
                                       Icon(
                                         Icons.chevron_right_rounded,
                                         size: 16,
-                                        color: textMuted,
+                                        color: colors.textMuted,
                                       ),
                                     ],
                                   ),
@@ -890,32 +911,86 @@ class _HomeScreenState extends State<HomeScreen>
                                       width: double.infinity,
                                       margin: const EdgeInsets.only(bottom: 12),
                                       padding: const EdgeInsets.symmetric(
-                                        vertical: 36,
+                                        vertical: 32,
+                                        horizontal: 20,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.35),
+                                        color: colors.surface,
                                         borderRadius: BorderRadius.circular(22),
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.08),
+                                          color: colors.border,
                                         ),
+                                        boxShadow: colors.isDark ? [] : [colors.cardShadow],
                                       ),
                                       child: Column(
                                         children: [
-                                          const Icon(
-                                            Icons.event_note_rounded,
-                                            size: 30,
-                                            color: textMutedDark,
+                                          Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: colors.surfaceSecondary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.receipt_long_rounded,
+                                              size: 28,
+                                              color: colors.textMuted,
+                                            ),
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: 12),
                                           Text(
                                             _isAllDateSelected
                                                 ? "Abhi tak koi entry nahi hai"
                                                 : "Is din ka koi hisaab nahi hai",
-                                            style: const TextStyle(
-                                              color: textMuted,
-                                              fontSize: 12.5,
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _isAllDateSelected
+                                                ? "Apna pehla len-den ya kharcha note karne ke liye button dabayein."
+                                                : "Kisi aur tareekh ko chunein ya naya hisaab likhein.",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: colors.textMuted,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          if (widget.onOpenEntry != null) ...[
+                                            const SizedBox(height: 16),
+                                            OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: colors.textPrimary,
+                                                side: BorderSide(
+                                                  color: colors.border,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 10,
+                                                ),
+                                              ),
+                                              icon: Icon(
+                                                Icons.add_rounded,
+                                                size: 16,
+                                                color: colors.isDark ? colors.greenAccent : colors.greenText,
+                                              ),
+                                              label: const Text(
+                                                "Naya Hisaab Likhein",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              onPressed: widget.onOpenEntry,
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     )
@@ -935,16 +1010,17 @@ class _HomeScreenState extends State<HomeScreen>
 
                                         if (isKharcha) {
                                           status = "Kharcha";
-                                          statusColor = textMuted;
+                                          statusColor = colors.textMuted;
                                         } else if (isLena) {
                                           status = "+₹${tx.amount} lena";
-                                          statusColor = greenAccent;
+                                          statusColor = colors.isDark ? colors.greenAccent : colors.greenText;
                                         } else {
                                           status = "-₹${tx.amount} dena";
-                                          statusColor = redAccent;
+                                          statusColor = colors.isDark ? colors.redAccent : colors.redText;
                                         }
 
                                         return _buildHistoryTile(
+                                          colors: colors,
                                           initials: _getInitials(tx.title),
                                           name: tx.title,
                                           timeOrDesc:
@@ -972,7 +1048,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       },
                                     ),
                                   const SizedBox(height: 10),
-                                  _buildBottomDateController(isFutureDisabled),
+                                  _buildBottomDateController(colors, isFutureDisabled),
                                 ],
                               );
                             },
@@ -990,14 +1066,15 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Glassy Date Controller at the Bottom
-  Widget _buildBottomDateController(bool isFutureDisabled) {
+  // Date Controller at the Bottom
+  Widget _buildBottomDateController(AppColors colors, bool isFutureDisabled) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.38),
+        color: colors.isDark ? Colors.black.withValues(alpha: 0.38) : colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.isDark ? [] : [colors.cardShadow],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1013,13 +1090,13 @@ class _HomeScreenState extends State<HomeScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: colors.isDark ? Colors.white.withValues(alpha: 0.08) : colors.surfaceSecondary,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.10)),
+                border: Border.all(color: colors.border),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.chevron_left_rounded,
-                color: Colors.white,
+                color: colors.textPrimary,
                 size: 20,
               ),
             ),
@@ -1033,15 +1110,29 @@ class _HomeScreenState extends State<HomeScreen>
                 lastDate: DateTime.now(),
                 builder: (context, child) {
                   return Theme(
-                    data: ThemeData.dark().copyWith(
-                      colorScheme: const ColorScheme.dark(
-                        primary: greenAccent,
-                        onPrimary: Colors.black,
-                        surface: const Color(0xFF1E1E22),
-                        onSurface: Colors.white,
-                      ),
-                      dialogBackgroundColor: const Color(0xFF16161A),
-                    ),
+                    data: colors.isDark
+                        ? ThemeData.dark().copyWith(
+                            colorScheme: const ColorScheme.dark(
+                              primary: greenAccent,
+                              onPrimary: Colors.black,
+                              surface: Color(0xFF1E1E22),
+                              onSurface: Colors.white,
+                            ),
+                            dialogTheme: const DialogThemeData(
+                              backgroundColor: Color(0xFF16161A),
+                            ),
+                          )
+                        : ThemeData.light().copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: colors.greenText,
+                              onPrimary: Colors.white,
+                              surface: colors.surface,
+                              onSurface: colors.textPrimary,
+                            ),
+                            dialogTheme: DialogThemeData(
+                              backgroundColor: colors.surface,
+                            ),
+                          ),
                     child: child!,
                   );
                 },
@@ -1063,16 +1154,16 @@ class _HomeScreenState extends State<HomeScreen>
                   _isAllDateSelected
                       ? "Showing All Records"
                       : _formatDisplayDate(_selectedDate),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colors.textPrimary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   "Tap to choose calendar date",
-                  style: TextStyle(color: textMutedDark, fontSize: 10),
+                  style: TextStyle(color: colors.textMuted, fontSize: 10),
                 ),
               ],
             ),
@@ -1093,19 +1184,21 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   decoration: BoxDecoration(
                     color: _isAllDateSelected
-                        ? greenPillBg
-                        : Colors.white.withOpacity(0.08),
+                        ? (colors.isDark ? greenPillBg : colors.greenPillBg)
+                        : (colors.isDark ? Colors.white.withValues(alpha: 0.08) : colors.surfaceSecondary),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _isAllDateSelected
-                          ? greenAccent.withOpacity(0.6)
-                          : Colors.white.withOpacity(0.10),
+                          ? (colors.isDark ? greenAccent.withValues(alpha: 0.6) : colors.greenPillBorder)
+                          : colors.border,
                     ),
                   ),
                   child: Text(
                     "All",
                     style: TextStyle(
-                      color: _isAllDateSelected ? greenAccent : textMuted,
+                      color: _isAllDateSelected
+                          ? (colors.isDark ? greenAccent : colors.greenText)
+                          : colors.textMuted,
                       fontSize: 10.5,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1128,19 +1221,19 @@ class _HomeScreenState extends State<HomeScreen>
                   decoration: BoxDecoration(
                     color: isFutureDisabled || _isAllDateSelected
                         ? Colors.transparent
-                        : Colors.white.withOpacity(0.08),
+                        : (colors.isDark ? Colors.white.withValues(alpha: 0.08) : colors.surfaceSecondary),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isFutureDisabled || _isAllDateSelected
                           ? Colors.transparent
-                          : Colors.white.withOpacity(0.10),
+                          : colors.border,
                     ),
                   ),
                   child: Icon(
                     Icons.chevron_right_rounded,
                     color: isFutureDisabled || _isAllDateSelected
-                        ? textMutedDark
-                        : Colors.white,
+                        ? (colors.isDark ? textMutedDark : colors.border)
+                        : colors.textPrimary,
                     size: 20,
                   ),
                 ),
@@ -1152,8 +1245,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Glassy Transaction History Tile
+  // Transaction History Tile
   Widget _buildHistoryTile({
+    required AppColors colors,
     required String initials,
     required String name,
     required String timeOrDesc,
@@ -1166,9 +1260,10 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
+        color: colors.isDark ? Colors.black.withValues(alpha: 0.35) : colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: colors.border),
+        boxShadow: colors.isDark ? [] : [colors.cardShadow],
       ),
       child: Material(
         color: Colors.transparent,
@@ -1185,14 +1280,14 @@ class _HomeScreenState extends State<HomeScreen>
                   height: 42,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.08),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    color: colors.surfaceSecondary,
+                    border: Border.all(color: colors.border),
                   ),
                   child: Center(
                     child: Text(
                       initials,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
@@ -1208,8 +1303,8 @@ class _HomeScreenState extends State<HomeScreen>
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colors.textPrimary,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1219,7 +1314,7 @@ class _HomeScreenState extends State<HomeScreen>
                         timeOrDesc,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: textMuted, fontSize: 11),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
                       ),
                     ],
                   ),
@@ -1230,8 +1325,8 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     Text(
                       amount,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                       ),

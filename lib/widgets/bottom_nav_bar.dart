@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../theme/app_colors.dart';
 
 class FloatingOledNavBar extends StatefulWidget {
   final int activeTab;
@@ -23,8 +25,6 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
 
-  static const Color textMuted = Color(0xFFA1A1AA);
-
   @override
   void initState() {
     super.initState();
@@ -34,9 +34,8 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
     );
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
     );
-
     _rotationAnimation = Tween<double>(begin: 0.0, end: 0.125).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
     );
@@ -49,14 +48,17 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
   }
 
   void _handlePlusTap() {
-    widget.onAddPressed();
+    HapticFeedback.lightImpact();
     _animController.forward().then((_) {
       if (mounted) _animController.reverse();
     });
+    widget.onAddPressed();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Positioned(
       left: 14,
       right: 14,
@@ -81,15 +83,17 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.40),
+                        color: colors.navBarBg,
                         borderRadius: BorderRadius.circular(34),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12),
+                          color: colors.navBarBorder,
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.40),
+                            color: Colors.black.withValues(
+                              alpha: colors.isDark ? 0.40 : 0.08,
+                            ),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -98,9 +102,9 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildNavItem(0, Icons.home_rounded, "Home"),
-                          _buildNavItem(1, Icons.menu_book_rounded, "Khata"),
-                          _buildNavItem(2, Icons.person_rounded, "Profile"),
+                          _buildNavItem(context, 0, Icons.home_rounded, "Home"),
+                          _buildNavItem(context, 1, Icons.menu_book_rounded, "Khata"),
+                          _buildNavItem(context, 2, Icons.person_rounded, "Profile"),
                         ],
                       ),
                     ),
@@ -110,47 +114,45 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
 
               const SizedBox(width: 12),
 
-              // 2. Smooth Responsive Floating '+' Button
+              // 2. Simple, Fast, Responsive Floating '+' Button
               GestureDetector(
                 onTap: _handlePlusTap,
                 behavior: HitTestBehavior.opaque,
-                child: AnimatedBuilder(
-                  animation: _animController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Container(
-                        height: 58,
-                        width: 58,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.20),
-                              blurRadius: 10,
-                              offset: const Offset(0, -2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: RotationTransition(
-                            turns: _rotationAnimation,
-                            child: const Icon(
-                              Icons.add_rounded,
-                              color: Colors.black,
-                              size: 30,
-                            ),
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Container(
+                    height: 58,
+                    width: 58,
+                    decoration: BoxDecoration(
+                      color: colors.plusButtonBg,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: colors.isDark ? 0.45 : 0.15,
                           ),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                        if (colors.isDark)
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.20),
+                            blurRadius: 10,
+                            offset: const Offset(0, -2),
+                          ),
+                      ],
+                    ),
+                    child: Center(
+                      child: RotationTransition(
+                        turns: _rotationAnimation,
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: colors.plusButtonIcon,
+                          size: 30,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -160,8 +162,9 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label) {
     final bool isSelected = widget.activeTab == index;
+    final colors = context.colors;
 
     return GestureDetector(
       onTap: () => widget.onTabSelected(index),
@@ -175,11 +178,18 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.12)
+              ? (colors.isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : colors.textPrimary.withValues(alpha: 0.08))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
           border: isSelected
-              ? Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1)
+              ? Border.all(
+                  color: colors.isDark
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : colors.textPrimary.withValues(alpha: 0.12),
+                  width: 1,
+                )
               : Border.all(color: Colors.transparent),
         ),
         child: Column(
@@ -193,7 +203,7 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
               child: Icon(
                 icon,
                 size: 20,
-                color: isSelected ? Colors.white : textMuted,
+                color: isSelected ? colors.textPrimary : colors.textMuted,
               ),
             ),
             const SizedBox(height: 2),
@@ -202,7 +212,7 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : textMuted,
+                color: isSelected ? colors.textPrimary : colors.textMuted,
                 height: 1.1,
               ),
               child: Text(label),

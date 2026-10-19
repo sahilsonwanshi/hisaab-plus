@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/friend_model.dart';
@@ -10,14 +11,18 @@ import '../models/entry_form_state.dart';
 import '../services/hisaab_entry_service.dart';
 import '../widgets/custom_toast.dart';
 import '../widgets/entry_form_widgets.dart';
+import '../widgets/expense_filter_bar.dart';
+import '../theme/app_colors.dart';
 
 class EntryFormView extends StatefulWidget {
   final int entryType;
+  final int? initialTabIndex; // 0: Dost, 1: Personal
   final VoidCallback onClose;
 
   const EntryFormView({
     super.key,
     required this.entryType,
+    this.initialTabIndex,
     required this.onClose,
   });
 
@@ -39,7 +44,13 @@ class _EntryFormViewState extends State<EntryFormView>
   late EntryFormStateData _stateData;
 
   late PageController _pageController;
-  int _currentSlideIndex = 0; // 0: Dost, 1: Personal
+  late int _currentSlideIndex; // 0: Dost, 1: Personal
+
+  // Personal Kharcha Date Filtering & Pagination (like Profile page)
+  String _personalActiveDateFilter = "all";
+  DateTime? _personalSelectedCustomDate;
+  static const int _personalPageSize = 6;
+  int _personalDisplayLimit = _personalPageSize;
 
   late ScrollController _friendsScrollCtrl;
   late ScrollController _personalScrollCtrl;
@@ -80,7 +91,10 @@ class _EntryFormViewState extends State<EntryFormView>
     _tagsBox = Hive.box<String>('tags_box');
     _personalBox = Hive.box<Map>('personal_expenses_box');
 
-    _pageController = PageController(initialPage: 0);
+    final int startTab =
+        widget.initialTabIndex ?? (widget.entryType == 2 ? 1 : 0);
+    _currentSlideIndex = startTab;
+    _pageController = PageController(initialPage: startTab);
     _friendsScrollCtrl = ScrollController();
     _personalScrollCtrl = ScrollController();
 
@@ -181,25 +195,26 @@ class _EntryFormViewState extends State<EntryFormView>
   }
 
   void _confirmDeletePersonalExpense(dynamic key, Map item) {
+    final colors = context.colors;
     final title = item["title"] ?? "Kharcha";
     final amount = item["amount"] ?? 0;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: surfaceCard,
+        backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: borderCustom),
+          side: BorderSide(color: colors.border),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.delete_forever_rounded, color: denaRed, size: 20),
-            SizedBox(width: 8),
+            Icon(Icons.delete_forever_rounded, color: colors.redAccent, size: 20),
+            const SizedBox(width: 8),
             Text(
               "Kharcha Delete Karein?",
               style: TextStyle(
-                color: Colors.white,
+                color: colors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
@@ -208,12 +223,12 @@ class _EntryFormViewState extends State<EntryFormView>
         ),
         content: Text(
           "Kya aap '$title' (-₹$amount) ko delete karna chahte hain?",
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          style: TextStyle(color: colors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            child: Text("Cancel", style: TextStyle(color: colors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -226,7 +241,7 @@ class _EntryFormViewState extends State<EntryFormView>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: denaRed,
+              backgroundColor: colors.redAccent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -375,12 +390,13 @@ class _EntryFormViewState extends State<EntryFormView>
   }
 
   void _showPaymentModeSheet({required bool isPersonal}) {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: surfaceCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        side: BorderSide(color: borderCustom),
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        side: BorderSide(color: colors.border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -395,16 +411,16 @@ class _EntryFormViewState extends State<EntryFormView>
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: colors.isDark ? Colors.white24 : colors.divider,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   "Payment Mode Chunein",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: colors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -422,13 +438,13 @@ class _EntryFormViewState extends State<EntryFormView>
                     ),
                     leading: Icon(
                       opt['icon'] as IconData,
-                      color: isSelected ? lenaGreen : neutral300,
+                      color: isSelected ? colors.greenAccent : colors.textSecondary,
                       size: 20,
                     ),
                     title: Text(
                       opt['name'] as String,
                       style: TextStyle(
-                        color: isSelected ? lenaGreen : Colors.white,
+                        color: isSelected ? colors.greenAccent : colors.textPrimary,
                         fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.w500,
@@ -436,9 +452,9 @@ class _EntryFormViewState extends State<EntryFormView>
                       ),
                     ),
                     trailing: isSelected
-                        ? const Icon(
+                        ? Icon(
                             Icons.check_circle_rounded,
-                            color: lenaGreen,
+                            color: colors.greenAccent,
                             size: 18,
                           )
                         : null,
@@ -474,12 +490,76 @@ class _EntryFormViewState extends State<EntryFormView>
     return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   }
 
+  bool _matchesPersonalDateFilter(DateTime itemDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final checkDate = DateTime(itemDate.year, itemDate.month, itemDate.day);
+
+    if (_personalActiveDateFilter == "all") return true;
+    if (_personalActiveDateFilter == "today") return checkDate == today;
+    if (_personalActiveDateFilter == "yesterday") return checkDate == yesterday;
+    if (_personalActiveDateFilter == "custom" &&
+        _personalSelectedCustomDate != null) {
+      final customDate = DateTime(
+        _personalSelectedCustomDate!.year,
+        _personalSelectedCustomDate!.month,
+        _personalSelectedCustomDate!.day,
+      );
+      return checkDate == customDate;
+    }
+    return true;
+  }
+
+  Future<void> _pickPersonalCustomDate() async {
+    final colors = context.colors;
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _personalSelectedCustomDate ?? now,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: (colors.isDark ? ThemeData.dark() : ThemeData.light()).copyWith(
+            colorScheme: colors.isDark
+                ? ColorScheme.dark(
+                    primary: colors.greenAccent,
+                    onPrimary: Colors.black,
+                    surface: colors.surface,
+                    onSurface: colors.textPrimary,
+                  )
+                : ColorScheme.light(
+                    primary: colors.greenAccent,
+                    onPrimary: Colors.white,
+                    surface: colors.surface,
+                    onSurface: colors.textPrimary,
+                  ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: colors.surface,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _personalSelectedCustomDate = picked;
+        _personalActiveDateFilter = "custom";
+        _personalDisplayLimit = _personalPageSize;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: bgOled,
+      backgroundColor: colors.bg,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
@@ -494,8 +574,8 @@ class _EntryFormViewState extends State<EntryFormView>
                 children: [
                   PageView(
                     controller: _pageController,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
+                    physics: const PageScrollPhysics(
+                      parent: ClampingScrollPhysics(),
                     ),
                     onPageChanged: (idx) {
                       setState(() {
@@ -519,24 +599,28 @@ class _EntryFormViewState extends State<EntryFormView>
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.85),
+                          color: colors.isDark
+                              ? Colors.black.withValues(alpha: 0.85)
+                              : colors.surface,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: lenaGreen.withOpacity(0.8),
+                            color: colors.greenAccent,
                             width: 1.5,
                           ),
                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.5),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
+                            colors.isDark
+                                ? BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  )
+                                : colors.cardShadow,
                           ],
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
                             Icons.keyboard_arrow_up_rounded,
-                            color: lenaGreen,
+                            color: colors.greenAccent,
                             size: 26,
                           ),
                         ),
@@ -556,36 +640,39 @@ class _EntryFormViewState extends State<EntryFormView>
   // TAB 0: DOST HISAAB PAGE (Now properly wrapped with Street BG)
   // -------------------------------------------------------------
   Widget _buildFriendsPageView() {
+    final colors = context.colors;
     return Stack(
       children: [
-        // 1. Street Lamp Rainy BG Image (45% Opacity)
-        Positioned.fill(
-          child: Opacity(
-            opacity: 0.45,
-            child: Image.asset(
-              'assets/images/friends_select_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
-            ),
-          ),
-        ),
-
-        // 2. Soft Dark Ambient Gradient
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.25),
-                  Colors.black.withOpacity(0.60),
-                ],
+        if (colors.isDark) ...[
+          // 1. Street Lamp Rainy BG Image (45% Opacity)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.45,
+              child: Image.asset(
+                'assets/images/friends_select_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
           ),
-        ),
+
+          // 2. Soft Dark Ambient Gradient
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.25),
+                    Colors.black.withValues(alpha: 0.60),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
 
         // 3. Main Dost Content
         ValueListenableBuilder<Box<FriendModel>>(
@@ -644,11 +731,13 @@ class _EntryFormViewState extends State<EntryFormView>
               final key = allKeys[i];
 
               if (_stateData.activeFilter == 'lena' &&
-                  (friend.type != 'lena' || friend.balance <= 0))
+                  (friend.type != 'lena' || friend.balance <= 0)) {
                 continue;
+              }
               if (_stateData.activeFilter == 'dena' &&
-                  (friend.type != 'dena' || friend.balance <= 0))
+                  (friend.type != 'dena' || friend.balance <= 0)) {
                 continue;
+              }
 
               if (_stateData.activeFilter != 'all' &&
                   _stateData.activeFilter != 'lena' &&
@@ -744,12 +833,12 @@ class _EntryFormViewState extends State<EntryFormView>
                       ),
                       const SizedBox(height: 10),
                       if (filteredEntries.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 36),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 36),
                           child: Center(
                             child: Text(
                               "Koi dost nahi mila",
-                              style: TextStyle(color: neutral400, fontSize: 12),
+                              style: TextStyle(color: colors.textMuted, fontSize: 12),
                             ),
                           ),
                         )
@@ -820,51 +909,76 @@ class _EntryFormViewState extends State<EntryFormView>
   // TAB 1: PERSONAL KHARCHA PAGE (Clean Card + Right Aligned Amount)
   // -------------------------------------------------------------
   Widget _buildPersonalExpensePageView() {
+    final colors = context.colors;
     return Stack(
       children: [
-        Positioned.fill(
-          child: Opacity(
-            opacity: 0.55,
-            child: Image.asset(
-              'assets/images/personal_kharcha_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.25),
-                  Colors.black.withOpacity(0.50),
-                ],
+        if (colors.isDark) ...[
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.55,
+              child: Image.asset(
+                'assets/images/personal_kharcha_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
           ),
-        ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.25),
+                    Colors.black.withValues(alpha: 0.50),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         Column(
           children: [
             Expanded(
               child: ValueListenableBuilder<Box<Map>>(
                 valueListenable: _personalBox.listenable(),
                 builder: (context, pBox, _) {
-                  final keys = pBox.keys.toList().reversed.toList();
-                  final items = pBox.values.toList().reversed.toList();
-                  final int todayTotal = pBox.values.fold(
+                  final rawKeys = pBox.keys.toList().reversed.toList();
+                  final rawItems = pBox.values.toList().reversed.toList();
+
+                  final List<MapEntry<dynamic, Map>> allFilteredItems = [];
+                  for (int i = 0; i < rawItems.length; i++) {
+                    final item = rawItems[i];
+                    final k = rawKeys[i];
+                    final ts =
+                        item["timestamp"] as int? ??
+                        DateTime.now().millisecondsSinceEpoch;
+                    final itemDate =
+                        DateTime.fromMillisecondsSinceEpoch(ts);
+                    if (!_matchesPersonalDateFilter(itemDate)) {
+                      continue;
+                    }
+                    allFilteredItems.add(MapEntry(k, item));
+                  }
+
+                  final int filteredTotal = allFilteredItems.fold(
                     0,
-                    (sum, e) => sum + ((e["amount"] as num?)?.toInt() ?? 0),
+                    (sum, e) =>
+                        sum + ((e.value["amount"] as num?)?.toInt() ?? 0),
                   );
+
+                  final paginatedItems = allFilteredItems
+                      .take(_personalDisplayLimit)
+                      .toList();
+                  final bool hasMore =
+                      allFilteredItems.length > _personalDisplayLimit;
 
                   final Map<String, List<MapEntry<dynamic, Map>>>
                   groupedExpenses = {};
-                  for (int i = 0; i < items.length; i++) {
-                    final item = items[i];
-                    final rawKey = keys[i];
+                  for (var entry in paginatedItems) {
+                    final item = entry.value;
                     final ts =
                         item["timestamp"] as int? ??
                         DateTime.now().millisecondsSinceEpoch;
@@ -873,7 +987,7 @@ class _EntryFormViewState extends State<EntryFormView>
                     );
                     groupedExpenses
                         .putIfAbsent(dateKey, () => [])
-                        .add(MapEntry(rawKey, item));
+                        .add(entry);
                   }
 
                   return ListView(
@@ -891,29 +1005,32 @@ class _EntryFormViewState extends State<EntryFormView>
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.38),
+                          color: colors.isDark
+                              ? Colors.black.withValues(alpha: 0.38)
+                              : colors.surface,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.12),
+                            color: colors.border,
                           ),
+                          boxShadow: colors.isDark ? null : [colors.cardShadow],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Text(
+                            Text(
                               "KHUD KA KHARCHA",
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: colors.textSecondary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.9,
                               ),
                             ),
                             Text(
-                              "₹$todayTotal.00",
-                              style: const TextStyle(
-                                color: Colors.white,
+                              "₹$filteredTotal.00",
+                              style: TextStyle(
+                                color: colors.textPrimary,
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -922,17 +1039,42 @@ class _EntryFormViewState extends State<EntryFormView>
                         ),
                       ),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
 
-                      if (items.isEmpty)
+                      // Organized Day Filter Bar (Like Profile Page)
+                      ExpenseFilterBar(
+                        activeDateFilter: _personalActiveDateFilter,
+                        selectedCustomDate: _personalSelectedCustomDate,
+                        onDateFilterChanged: (newFilter) {
+                          setState(() {
+                            _personalActiveDateFilter = newFilter;
+                            _personalSelectedCustomDate = null;
+                            _personalDisplayLimit = _personalPageSize;
+                          });
+                        },
+                        onPickCustomDate: _pickPersonalCustomDate,
+                        onClearCustomDate: () {
+                          setState(() {
+                            _personalActiveDateFilter = "all";
+                            _personalSelectedCustomDate = null;
+                            _personalDisplayLimit = _personalPageSize;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      if (allFilteredItems.isEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 36),
                           alignment: Alignment.center,
-                          child: const Text(
-                            "Abhi tak koi kharcha add nahi kiya gaya hai.\nNiche diye dock se turant add karein!",
+                          child: Text(
+                            _personalActiveDateFilter == "all"
+                                ? "Abhi tak koi kharcha add nahi kiya gaya hai.\nNiche diye dock se turant add karein!"
+                                : "Chune gaye filter me koi kharcha nahi mila.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.white60,
+                              color: colors.textMuted,
                               fontSize: 12,
                             ),
                           ),
@@ -953,16 +1095,18 @@ class _EntryFormViewState extends State<EntryFormView>
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.40),
+                                      color: colors.isDark
+                                          ? Colors.black.withValues(alpha: 0.40)
+                                          : colors.surfaceSecondary,
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: Colors.white.withOpacity(0.12),
+                                        color: colors.border,
                                       ),
                                     ),
                                     child: Text(
                                       dateLabel,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -972,7 +1116,7 @@ class _EntryFormViewState extends State<EntryFormView>
                                   Expanded(
                                     child: Container(
                                       height: 1,
-                                      color: Colors.white.withOpacity(0.08),
+                                      color: colors.divider,
                                     ),
                                   ),
                                 ],
@@ -997,8 +1141,8 @@ class _EntryFormViewState extends State<EntryFormView>
                                         padding: const EdgeInsets.only(top: 12),
                                         child: Text(
                                           item["time"] ?? "00:00",
-                                          style: const TextStyle(
-                                            color: Colors.white60,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1011,10 +1155,10 @@ class _EntryFormViewState extends State<EntryFormView>
                                           width: 28,
                                           height: 28,
                                           decoration: BoxDecoration(
-                                            color: catColor.withOpacity(0.20),
+                                            color: catColor.withValues(alpha: 0.15),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: catColor.withOpacity(0.65),
+                                              color: catColor.withValues(alpha: 0.65),
                                               width: 1.5,
                                             ),
                                           ),
@@ -1027,9 +1171,7 @@ class _EntryFormViewState extends State<EntryFormView>
                                         Expanded(
                                           child: Container(
                                             width: 1.5,
-                                            color: Colors.white.withOpacity(
-                                              0.12,
-                                            ),
+                                            color: colors.divider,
                                           ),
                                         ),
                                       ],
@@ -1052,17 +1194,16 @@ class _EntryFormViewState extends State<EntryFormView>
                                             vertical: 10,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.35,
-                                            ),
+                                            color: colors.isDark
+                                                ? Colors.black.withValues(alpha: 0.35)
+                                                : colors.surface,
                                             borderRadius: BorderRadius.circular(
                                               15,
                                             ),
                                             border: Border.all(
-                                              color: Colors.white.withOpacity(
-                                                0.08,
-                                              ),
+                                              color: colors.border,
                                             ),
+                                            boxShadow: colors.isDark ? null : [colors.cardShadow],
                                           ),
                                           child: Row(
                                             crossAxisAlignment:
@@ -1076,8 +1217,8 @@ class _EntryFormViewState extends State<EntryFormView>
                                                     Text(
                                                       item["title"] ??
                                                           "Kharcha",
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
+                                                      style: TextStyle(
+                                                        color: colors.textPrimary,
                                                         fontSize: 13,
                                                         fontWeight:
                                                             FontWeight.w700,
@@ -1089,8 +1230,8 @@ class _EntryFormViewState extends State<EntryFormView>
                                                               true
                                                           ? item["sub"]
                                                           : cat,
-                                                      style: const TextStyle(
-                                                        color: Colors.white60,
+                                                      style: TextStyle(
+                                                        color: colors.textSecondary,
                                                         fontSize: 10.5,
                                                       ),
                                                       maxLines: 1,
@@ -1106,8 +1247,8 @@ class _EntryFormViewState extends State<EntryFormView>
                                                 children: [
                                                   Text(
                                                     "-₹${item['amount']}",
-                                                    style: const TextStyle(
-                                                      color: denaRed,
+                                                    style: TextStyle(
+                                                      color: colors.redAccent,
                                                       fontSize: 13.5,
                                                       fontWeight:
                                                           FontWeight.w900,
@@ -1116,8 +1257,8 @@ class _EntryFormViewState extends State<EntryFormView>
                                                   const SizedBox(height: 2),
                                                   Text(
                                                     item["mode"] ?? "UPI",
-                                                    style: const TextStyle(
-                                                      color: Colors.white38,
+                                                    style: TextStyle(
+                                                      color: colors.textMuted,
                                                       fontSize: 9.5,
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -1136,6 +1277,61 @@ class _EntryFormViewState extends State<EntryFormView>
                             }),
                           ];
                         }),
+
+                      // View More Button
+                      if (hasMore) ...[
+                        const SizedBox(height: 14),
+                        Center(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _personalDisplayLimit += _personalPageSize;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.isDark
+                                      ? Colors.black.withValues(alpha: 0.45)
+                                      : colors.surface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: colors.border,
+                                  ),
+                                  boxShadow: colors.isDark ? null : [colors.cardShadow],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "View More",
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: colors.greenAccent,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                     ],
                   );
                 },
@@ -1152,13 +1348,16 @@ class _EntryFormViewState extends State<EntryFormView>
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.30),
+                      color: colors.isDark
+                          ? Colors.black.withValues(alpha: 0.30)
+                          : colors.surface,
                       border: Border(
                         top: BorderSide(
-                          color: Colors.white.withOpacity(0.12),
+                          color: colors.border,
                           width: 1,
                         ),
                       ),
+                      boxShadow: colors.isDark ? null : [colors.cardShadow],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1174,17 +1373,17 @@ class _EntryFormViewState extends State<EntryFormView>
                             children: [
                               Row(
                                 children: [
-                                  const Text(
+                                  Text(
                                     "Category: ",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: colors.textSecondary,
                                       fontSize: 11.5,
                                     ),
                                   ),
                                   Text(
                                     _personalSelectedCat,
-                                    style: const TextStyle(
-                                      color: lenaGreen,
+                                    style: TextStyle(
+                                      color: colors.greenAccent,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
                                     ),
@@ -1193,8 +1392,8 @@ class _EntryFormViewState extends State<EntryFormView>
                               ),
                               Text(
                                 "Wallet / $_personalSelectedMode",
-                                style: const TextStyle(
-                                  color: Colors.white60,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1206,31 +1405,33 @@ class _EntryFormViewState extends State<EntryFormView>
                           height: 44,
                           padding: const EdgeInsets.only(left: 12, right: 6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.40),
+                            color: colors.isDark
+                                ? Colors.black.withValues(alpha: 0.40)
+                                : colors.surfaceSecondary,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.10),
+                              color: colors.border,
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.edit_note_rounded,
-                                color: Colors.white70,
+                                color: colors.textSecondary,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: TextField(
                                   controller: _personalTitleCtrl,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
                                     fontSize: 13,
                                   ),
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     hintText: "Title (Chai, Kirana, Petrol, Lunch)...",
                                     hintStyle: TextStyle(
-                                      color: Colors.white38,
+                                      color: colors.textMuted,
                                       fontSize: 12,
                                     ),
                                     border: InputBorder.none,
@@ -1247,33 +1448,35 @@ class _EntryFormViewState extends State<EntryFormView>
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.12),
+                                    color: colors.isDark
+                                        ? Colors.white.withValues(alpha: 0.12)
+                                        : colors.surface,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.15),
+                                      color: colors.border,
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.account_balance_wallet_rounded,
-                                        color: lenaGreen,
+                                        color: colors.greenAccent,
                                         size: 13,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         _personalSelectedMode,
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(width: 2),
-                                      const Icon(
+                                      Icon(
                                         Icons.keyboard_arrow_down_rounded,
-                                        color: Colors.white70,
+                                        color: colors.textSecondary,
                                         size: 14,
                                       ),
                                     ],
@@ -1303,22 +1506,23 @@ class _EntryFormViewState extends State<EntryFormView>
                                     ),
                                     decoration: BoxDecoration(
                                       color: isSel
-                                          ? const Color(0xFF0F291C)
-                                                .withOpacity(0.85)
-                                          : Colors.black.withOpacity(0.35),
+                                          ? colors.greenPillBg
+                                          : (colors.isDark
+                                              ? Colors.black.withValues(alpha: 0.35)
+                                              : colors.surfaceSecondary),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
                                         color: isSel
-                                            ? lenaGreen.withOpacity(0.8)
-                                            : Colors.white.withOpacity(0.10),
+                                            ? colors.greenPillBorder
+                                            : colors.border,
                                       ),
                                     ),
                                     child: Text(
                                       cat,
                                       style: TextStyle(
                                         color: isSel
-                                            ? const Color(0xFF34D399)
-                                            : Colors.white70,
+                                            ? colors.greenText
+                                            : colors.textSecondary,
                                         fontSize: 11,
                                         fontWeight: isSel
                                             ? FontWeight.bold
@@ -1341,18 +1545,20 @@ class _EntryFormViewState extends State<EntryFormView>
                                   horizontal: 14,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.40),
+                                  color: colors.isDark
+                                      ? Colors.black.withValues(alpha: 0.40)
+                                      : colors.surfaceSecondary,
                                   borderRadius: BorderRadius.circular(24),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.12),
+                                    color: colors.border,
                                   ),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       "₹",
                                       style: TextStyle(
-                                        color: lenaGreen,
+                                        color: colors.greenAccent,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
                                       ),
@@ -1362,15 +1568,18 @@ class _EntryFormViewState extends State<EntryFormView>
                                       child: TextField(
                                         controller: _personalAmountCtrl,
                                         keyboardType: TextInputType.number,
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly,
+                                        ],
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           hintText: "Amount",
                                           hintStyle: TextStyle(
-                                            color: Colors.white38,
+                                            color: colors.textMuted,
                                             fontSize: 13,
                                           ),
                                           border: InputBorder.none,
@@ -1387,8 +1596,8 @@ class _EntryFormViewState extends State<EntryFormView>
                               height: 48,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
+                                  backgroundColor: colors.isDark ? Colors.white : colors.greenAccent,
+                                  foregroundColor: colors.isDark ? Colors.black : Colors.white,
                                   shape: const StadiumBorder(),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
@@ -1396,19 +1605,20 @@ class _EntryFormViewState extends State<EntryFormView>
                                   elevation: 0,
                                 ),
                                 onPressed: _handleSavePersonalKharcha,
-                                child: const Row(
+                                child: Row(
                                   children: [
                                     Text(
                                       "Save",
                                       style: TextStyle(
                                         fontWeight: FontWeight.w900,
                                         fontSize: 14,
+                                        color: colors.isDark ? Colors.black : Colors.white,
                                       ),
                                     ),
-                                    SizedBox(width: 4),
+                                    const SizedBox(width: 4),
                                     Icon(
                                       Icons.check_rounded,
-                                      color: Colors.black,
+                                      color: colors.isDark ? Colors.black : Colors.white,
                                       size: 18,
                                     ),
                                   ],
@@ -1422,16 +1632,18 @@ class _EntryFormViewState extends State<EntryFormView>
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.40),
+                                  color: colors.isDark
+                                      ? Colors.black.withValues(alpha: 0.40)
+                                      : colors.surfaceSecondary,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.12),
+                                    color: colors.border,
                                   ),
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: Icon(
                                     Icons.close_rounded,
-                                    color: Colors.white,
+                                    color: colors.textSecondary,
                                     size: 20,
                                   ),
                                 ),

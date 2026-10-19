@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/friend_model.dart';
+import '../theme/app_colors.dart';
 
-// UI Palette Constants
+// UI Palette Constants (preserved for backwards-compatibility)
 const Color bgOled = Color(0xFF000000);
 const Color surfaceCard = Color(0xFF121415);
 const Color surfaceSec = Color(0xFF18181B);
@@ -49,6 +51,7 @@ class EntryTopNavHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 6, 16, 8),
       child: Row(
@@ -57,17 +60,17 @@ class EntryTopNavHeader extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: neutral400,
+                  color: colors.textSecondary,
                   size: 18,
                 ),
                 onPressed: onBack,
               ),
               Text(
                 activeTab == 0 ? "Choose Friends" : "Personal Kharcha",
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: colors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.3,
@@ -78,9 +81,15 @@ class EntryTopNavHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.40),
+              color: colors.isDark
+                  ? Colors.black.withValues(alpha: 0.40)
+                  : colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              border: Border.all(
+                color: colors.isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : colors.border,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -93,13 +102,17 @@ class EntryTopNavHeader extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: activeTab == 0 ? Colors.white : Colors.transparent,
+                      color: activeTab == 0
+                          ? (colors.isDark ? Colors.white : colors.textPrimary)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       "Dost",
                       style: TextStyle(
-                        color: activeTab == 0 ? Colors.black : neutral400,
+                        color: activeTab == 0
+                            ? (colors.isDark ? Colors.black : Colors.white)
+                            : colors.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -114,13 +127,15 @@ class EntryTopNavHeader extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: activeTab == 1 ? lenaGreen : Colors.transparent,
+                      color: activeTab == 1 ? colors.greenAccent : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       "Personal",
                       style: TextStyle(
-                        color: activeTab == 1 ? Colors.black : neutral400,
+                        color: activeTab == 1
+                            ? (colors.isDark ? Colors.black : Colors.white)
+                            : colors.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -155,18 +170,38 @@ class EntrySearchBarAndFilters extends StatelessWidget {
     required this.onSearchChanged,
   });
 
-  Widget _buildFilterPill(FilterItem item) {
+  Widget _buildFilterPill(FilterItem item, AppColors colors) {
     final isSelected = activeFilter == item.id;
-    Color textColor = neutral400;
+    Color textColor;
+    Color bgColor;
+    Color borderColor;
 
     if (isSelected) {
-      textColor = Colors.black;
+      bgColor = colors.isDark ? Colors.white : colors.textPrimary;
+      borderColor = colors.isDark ? Colors.white : colors.textPrimary;
+      textColor = colors.isDark ? Colors.black : Colors.white;
     } else if (item.type == 'lena') {
-      textColor = lenaGreen;
+      bgColor = colors.greenPillBg;
+      borderColor = colors.greenPillBorder;
+      textColor = colors.greenText;
     } else if (item.type == 'dena') {
-      textColor = const Color(0xFFFB7185);
+      bgColor = colors.redPillBg;
+      borderColor = colors.redPillBorder;
+      textColor = colors.redText;
     } else if (item.type == 'tag') {
-      textColor = const Color(0xFF38BDF8);
+      bgColor = colors.isDark
+          ? const Color(0xFF0C1929).withValues(alpha: 0.65)
+          : const Color(0xFFE0F2FE);
+      borderColor = colors.isDark
+          ? const Color(0xFF0284C7).withValues(alpha: 0.4)
+          : const Color(0xFFBAE6FD);
+      textColor = colors.blueAccent;
+    } else {
+      bgColor = colors.isDark
+          ? Colors.black.withValues(alpha: 0.35)
+          : colors.surface;
+      borderColor = colors.border;
+      textColor = colors.textSecondary;
     }
 
     return GestureDetector(
@@ -175,25 +210,15 @@ class EntrySearchBarAndFilters extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white
-              : (item.type == 'tag'
-                    ? const Color(0xFF0C1929).withOpacity(0.65)
-                    : Colors.black.withOpacity(0.35)),
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? Colors.white
-                : (item.type == 'tag'
-                      ? const Color(0xFF0284C7).withOpacity(0.4)
-                      : Colors.white.withOpacity(0.10)),
-          ),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (item.type == 'tag' && !isSelected) ...[
-              const Icon(Icons.tag_rounded, size: 12, color: Color(0xFF38BDF8)),
+              Icon(Icons.tag_rounded, size: 12, color: colors.blueAccent),
               const SizedBox(width: 3),
             ],
             Text(
@@ -212,6 +237,7 @@ class EntrySearchBarAndFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -220,22 +246,24 @@ class EntrySearchBarAndFilters extends StatelessWidget {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.35),
+              color: colors.isDark
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : colors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.10)),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
-                const Icon(Icons.search_rounded, color: neutral400, size: 18),
+                Icon(Icons.search_rounded, color: colors.textSecondary, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: searchCtrl,
                     onChanged: (val) => onSearchChanged(),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: colors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
                       hintText: "Dost ka naam search karein...",
-                      hintStyle: TextStyle(color: neutral400, fontSize: 13),
+                      hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -251,13 +279,15 @@ class EntrySearchBarAndFilters extends StatelessWidget {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: colors.isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : colors.surfaceHighlight,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
                         size: 12,
-                        color: neutral300,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ),
@@ -270,7 +300,7 @@ class EntrySearchBarAndFilters extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: filterList
-                  .map((item) => _buildFilterPill(item))
+                  .map((item) => _buildFilterPill(item, colors))
                   .toList(),
             ),
           ),
@@ -312,20 +342,21 @@ class AddFriendAccordionWidget extends StatelessWidget {
   });
 
   void _showAddCustomTagDialog(BuildContext context) {
+    final colors = context.colors;
     final TextEditingController customTagCtrl = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: surfaceCard,
+          backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: borderCustom),
+            side: BorderSide(color: colors.border),
           ),
-          title: const Text(
+          title: Text(
             "Naya Custom Tag Banayein",
             style: TextStyle(
-              color: Colors.white,
+              color: colors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
@@ -334,17 +365,17 @@ class AddFriendAccordionWidget extends StatelessWidget {
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: surfaceSec,
+              color: colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderCustom),
+              border: Border.all(color: colors.border),
             ),
             child: TextField(
               controller: customTagCtrl,
               autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: const InputDecoration(
+              style: TextStyle(color: colors.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
                 hintText: "Tag ka naam (e.g. Gym, Flatmate)...",
-                hintStyle: TextStyle(color: neutral500, fontSize: 12),
+                hintStyle: TextStyle(color: colors.textMuted, fontSize: 12),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -353,14 +384,14 @@ class AddFriendAccordionWidget extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text(
+              child: Text(
                 "Cancel",
-                style: TextStyle(color: neutral400, fontSize: 12),
+                style: TextStyle(color: colors.textSecondary, fontSize: 12),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: lenaGreen,
+                backgroundColor: colors.greenAccent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -373,10 +404,10 @@ class AddFriendAccordionWidget extends StatelessWidget {
                 }
                 Navigator.pop(ctx);
               },
-              child: const Text(
+              child: Text(
                 "Add Tag",
                 style: TextStyle(
-                  color: Colors.black,
+                  color: colors.isDark ? Colors.black : Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -392,28 +423,35 @@ class AddFriendAccordionWidget extends StatelessWidget {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    required AppColors colors,
     bool isPhone = false,
   }) {
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.40),
+        color: colors.isDark
+            ? Colors.black.withValues(alpha: 0.40)
+            : colors.surfaceSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(
+          color: colors.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : colors.border,
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: neutral400, size: 17),
+          Icon(icon, color: colors.textSecondary, size: 17),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: controller,
               keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              style: TextStyle(color: colors.textPrimary, fontSize: 12),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: const TextStyle(color: neutral500, fontSize: 12),
+                hintStyle: TextStyle(color: colors.textMuted, fontSize: 12),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -426,11 +464,19 @@ class AddFriendAccordionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
+        color: colors.isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : colors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: lenaGreen.withOpacity(0.45)),
+        border: Border.all(
+          color: colors.isDark
+              ? lenaGreen.withValues(alpha: 0.45)
+              : colors.border,
+        ),
+        boxShadow: colors.isDark ? null : [colors.cardShadow],
       ),
       child: Column(
         children: [
@@ -445,13 +491,13 @@ class AddFriendAccordionWidget extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F291C).withOpacity(0.70),
+                      color: colors.greenPillBg,
                       shape: BoxShape.circle,
-                      border: Border.all(color: lenaGreen.withOpacity(0.5)),
+                      border: Border.all(color: colors.greenPillBorder),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_add_rounded,
-                      color: lenaGreen,
+                      color: colors.greenAccent,
                       size: 20,
                     ),
                   ),
@@ -462,10 +508,10 @@ class AddFriendAccordionWidget extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Text(
+                            Text(
                               "Naya Dost Add Karein",
                               style: TextStyle(
-                                color: Colors.white,
+                                color: colors.textPrimary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -477,16 +523,16 @@ class AddFriendAccordionWidget extends StatelessWidget {
                                 vertical: 1.5,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0F291C),
+                                color: colors.greenPillBg,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: lenaGreen.withOpacity(0.4),
+                                  color: colors.greenPillBorder,
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 "+ New",
                                 style: TextStyle(
-                                  color: Color(0xFF34D399),
+                                  color: colors.greenAccent,
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -495,9 +541,9 @@ class AddFriendAccordionWidget extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        const Text(
+                        Text(
                           "Naye dost ka hisaab jodne ke liye",
-                          style: TextStyle(color: neutral400, fontSize: 11),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 11),
                         ),
                       ],
                     ),
@@ -506,14 +552,16 @@ class AddFriendAccordionWidget extends StatelessWidget {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: colors.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : colors.surfaceSecondary,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isOpen
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
-                      color: neutral300,
+                      color: colors.textSecondary,
                       size: 18,
                     ),
                   ),
@@ -522,49 +570,57 @@ class AddFriendAccordionWidget extends StatelessWidget {
             ),
           ),
           if (isOpen) ...[
-            Divider(height: 1, color: Colors.white.withOpacity(0.08)),
+            Divider(
+              height: 1,
+              color: colors.isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : colors.divider,
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Dost ka Naam *",
-                    style: TextStyle(color: neutral400, fontSize: 11),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   _buildFormInput(
                     controller: nameCtrl,
                     hint: "e.g. Amit Sharma",
                     icon: Icons.badge_outlined,
+                    colors: colors,
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     "Mobile Number",
-                    style: TextStyle(color: neutral400, fontSize: 11),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   _buildFormInput(
                     controller: phoneCtrl,
                     hint: "+91 98765 43210",
                     icon: Icons.call_outlined,
+                    colors: colors,
                     isPhone: true,
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     "Description / Note",
-                    style: TextStyle(color: neutral400, fontSize: 11),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   _buildFormInput(
                     controller: noteCtrl,
                     hint: "Dost ke baare me note (optional)",
                     icon: Icons.notes_rounded,
+                    colors: colors,
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     "Tag Chunein (Optional)",
-                    style: TextStyle(color: neutral400, fontSize: 11),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                   const SizedBox(height: 6),
                   SingleChildScrollView(
@@ -584,21 +640,21 @@ class AddFriendAccordionWidget extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSel
-                                      ? const Color(0xFF0F291C)
-                                      : surfaceSec,
+                                      ? colors.greenPillBg
+                                      : colors.surfaceSecondary,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: isSel
-                                        ? lenaGreen.withOpacity(0.6)
-                                        : borderCustom,
+                                        ? colors.greenPillBorder
+                                        : colors.border,
                                   ),
                                 ),
                                 child: Text(
                                   tag,
                                   style: TextStyle(
                                     color: isSel
-                                        ? const Color(0xFF34D399)
-                                        : neutral300,
+                                        ? colors.greenText
+                                        : colors.textSecondary,
                                     fontSize: 11,
                                     fontWeight: isSel
                                         ? FontWeight.bold
@@ -617,25 +673,29 @@ class AddFriendAccordionWidget extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0C1929),
+                              color: colors.isDark
+                                  ? const Color(0xFF0C1929)
+                                  : const Color(0xFFE0F2FE),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFF0284C7).withOpacity(0.4),
+                                color: colors.isDark
+                                    ? const Color(0xFF0284C7).withValues(alpha: 0.4)
+                                    : const Color(0xFFBAE6FD),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.add_rounded,
                                   size: 12,
-                                  color: Color(0xFF38BDF8),
+                                  color: colors.blueAccent,
                                 ),
-                                SizedBox(width: 3),
+                                const SizedBox(width: 3),
                                 Text(
                                   "Custom",
                                   style: TextStyle(
-                                    color: Color(0xFF38BDF8),
+                                    color: colors.blueAccent,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -656,18 +716,23 @@ class AddFriendAccordionWidget extends StatelessWidget {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: Colors.white.withOpacity(0.12),
+                                color: colors.border,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              backgroundColor: Colors.black.withOpacity(0.35),
+                              backgroundColor: colors.isDark
+                                  ? Colors.black.withValues(alpha: 0.35)
+                                  : colors.surfaceSecondary,
                               padding: EdgeInsets.zero,
                             ),
                             onPressed: onCancel,
-                            child: const Text(
+                            child: Text(
                               "Cancel",
-                              style: TextStyle(color: neutral300, fontSize: 12),
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -678,28 +743,28 @@ class AddFriendAccordionWidget extends StatelessWidget {
                           height: 38,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: lenaGreen,
+                              backgroundColor: colors.greenAccent,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: 0,
                             ),
                             onPressed: onSubmit,
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Dost Save Karein",
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: colors.isDark ? Colors.black : Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Icon(
                                   Icons.check_rounded,
-                                  color: Colors.black,
+                                  color: colors.isDark ? Colors.black : Colors.white,
                                   size: 16,
                                 ),
                               ],
@@ -747,12 +812,13 @@ class SelectableFriendCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isLena = friend.type == 'lena';
     final isSettled = friend.balance == 0 || friend.type == 'settled';
 
     final Color amountColor = isSettled
-        ? neutral400
-        : (isLena ? lenaGreen : denaRed);
+        ? colors.textSecondary
+        : (isLena ? colors.greenAccent : colors.redAccent);
 
     final String balanceLabel = isSettled
         ? "₹0 chukta"
@@ -767,15 +833,22 @@ class SelectableFriendCardWidget extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isSelected
-                ? const Color(0xFF0F1E16).withOpacity(0.80)
-                : Colors.black.withOpacity(0.35),
+                ? (colors.isDark
+                    ? const Color(0xFF0F1E16).withValues(alpha: 0.80)
+                    : colors.greenPillBg)
+                : (colors.isDark
+                    ? Colors.black.withValues(alpha: 0.35)
+                    : colors.surface),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isSelected
-                  ? lenaGreen.withOpacity(0.85)
-                  : Colors.white.withOpacity(0.08),
+                  ? (colors.isDark
+                      ? lenaGreen.withValues(alpha: 0.85)
+                      : colors.greenAccent)
+                  : colors.border,
               width: isSelected ? 1.2 : 1,
             ),
+            boxShadow: (!colors.isDark && !isSelected) ? [colors.cardShadow] : null,
           ),
           child: Row(
             children: [
@@ -785,19 +858,25 @@ class SelectableFriendCardWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isSelected
-                      ? const Color(0xFF0F291C)
-                      : Colors.white.withOpacity(0.08),
+                      ? (colors.isDark
+                          ? const Color(0xFF0F291C)
+                          : const Color(0xFFD1FAE5))
+                      : (colors.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : colors.surfaceSecondary),
                   border: Border.all(
                     color: isSelected
-                        ? lenaGreen.withOpacity(0.5)
-                        : Colors.white.withOpacity(0.12),
+                        ? colors.greenAccent.withValues(alpha: 0.5)
+                        : colors.border,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     _getInitials(friend.name),
                     style: TextStyle(
-                      color: isSelected ? const Color(0xFF34D399) : neutral300,
+                      color: isSelected
+                          ? colors.greenAccent
+                          : colors.textPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -813,8 +892,8 @@ class SelectableFriendCardWidget extends StatelessWidget {
                       friend.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -828,7 +907,7 @@ class SelectableFriendCardWidget extends StatelessWidget {
                                 : "Khata ready"),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: neutral400, fontSize: 11),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11),
                     ),
                   ],
                 ),
@@ -849,7 +928,7 @@ class SelectableFriendCardWidget extends StatelessWidget {
                   Text(
                     balanceLabel,
                     style: TextStyle(
-                      color: amountColor.withOpacity(0.85),
+                      color: amountColor.withValues(alpha: 0.85),
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -862,14 +941,18 @@ class SelectableFriendCardWidget extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? lenaGreen : Colors.transparent,
+                  color: isSelected ? colors.greenAccent : Colors.transparent,
                   border: Border.all(
-                    color: isSelected ? lenaGreen : Colors.white24,
+                    color: isSelected ? colors.greenAccent : colors.border,
                     width: 1.5,
                   ),
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, size: 14, color: Colors.black)
+                    ? Icon(
+                        Icons.check,
+                        size: 14,
+                        color: colors.isDark ? Colors.black : Colors.white,
+                      )
                     : null,
               ),
             ],
@@ -915,13 +998,17 @@ class EntryBottomDockWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
+        color: colors.isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : colors.surface,
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.10), width: 1),
+          top: BorderSide(color: colors.border, width: 1),
         ),
+        boxShadow: colors.isDark ? null : [colors.cardShadow],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -934,9 +1021,9 @@ class EntryBottomDockWidget extends StatelessWidget {
                 Expanded(
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         "Chuna Hua Dost: ",
-                        style: TextStyle(color: Colors.white70, fontSize: 11.5),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11.5),
                       ),
                       Flexible(
                         child: Text(
@@ -945,8 +1032,8 @@ class EntryBottomDockWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: hasSelectedFriend
-                                ? lenaGreen
-                                : Colors.white60,
+                                ? colors.greenAccent
+                                : colors.textMuted,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -962,27 +1049,27 @@ class EntryBottomDockWidget extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isPositive
-                        ? const Color(0xFF0F291C).withOpacity(0.8)
+                        ? colors.greenPillBg
                         : (!hasSelectedFriend
-                              ? Colors.black.withOpacity(0.4)
-                              : const Color(0xFF2B1015).withOpacity(0.8)),
+                              ? colors.surfaceSecondary
+                              : colors.redPillBg),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: isPositive
-                          ? lenaGreen.withOpacity(0.4)
+                          ? colors.greenPillBorder
                           : (!hasSelectedFriend
-                                ? Colors.white.withOpacity(0.08)
-                                : denaRed.withOpacity(0.4)),
+                                ? colors.border
+                                : colors.redPillBorder),
                     ),
                   ),
                   child: Text(
                     activeBalance,
                     style: TextStyle(
                       color: isPositive
-                          ? const Color(0xFF34D399)
+                          ? colors.greenText
                           : (!hasSelectedFriend
-                                ? neutral400
-                                : const Color(0xFFFB7185)),
+                                ? colors.textMuted
+                                : colors.redText),
                       fontWeight: FontWeight.w700,
                       fontSize: 10.5,
                     ),
@@ -995,25 +1082,27 @@ class EntryBottomDockWidget extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.only(left: 12, right: 6),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.40),
+              color: colors.isDark
+                  ? Colors.black.withValues(alpha: 0.40)
+                  : colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.edit_note_rounded,
-                  color: Colors.white60,
+                  color: colors.textSecondary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: noteCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: colors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
                       hintText: "Hisaab ka note likhein...",
-                      hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                      hintStyle: TextStyle(color: colors.textMuted, fontSize: 12),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -1027,31 +1116,33 @@ class EntryBottomDockWidget extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.10),
+                      color: colors.isDark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : colors.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                      border: Border.all(color: colors.border),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.account_balance_wallet_rounded,
-                          color: lenaGreen,
+                          color: colors.greenAccent,
                           size: 13,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           selectedPaymentMode,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white70,
+                          color: colors.textSecondary,
                           size: 14,
                         ),
                       ],
@@ -1070,9 +1161,11 @@ class EntryBottomDockWidget extends StatelessWidget {
             height: 44,
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.40),
+              color: colors.isDark
+                  ? Colors.black.withValues(alpha: 0.40)
+                  : colors.surfaceSecondary,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: colors.border),
             ),
             child: Row(
               children: [
@@ -1086,12 +1179,14 @@ class EntryBottomDockWidget extends StatelessWidget {
                       curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: txType == 'diya'
-                            ? const Color(0xFF0F291C).withOpacity(0.90)
+                            ? (colors.isDark
+                                ? const Color(0xFF0F291C).withValues(alpha: 0.90)
+                                : colors.greenPillBg)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(13),
                         border: Border.all(
                           color: txType == 'diya'
-                              ? lenaGreen.withOpacity(0.75)
+                              ? colors.greenAccent
                               : Colors.transparent,
                           width: 1.2,
                         ),
@@ -1104,16 +1199,16 @@ class EntryBottomDockWidget extends StatelessWidget {
                               Icons.arrow_upward_rounded,
                               size: 16,
                               color: txType == 'diya'
-                                  ? const Color(0xFF34D399)
-                                  : neutral400,
+                                  ? colors.greenText
+                                  : colors.textSecondary,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               "Diya",
                               style: TextStyle(
                                 color: txType == 'diya'
-                                    ? const Color(0xFF34D399)
-                                    : neutral400,
+                                    ? colors.greenText
+                                    : colors.textSecondary,
                                 fontWeight: txType == 'diya'
                                     ? FontWeight.bold
                                     : FontWeight.w600,
@@ -1139,12 +1234,14 @@ class EntryBottomDockWidget extends StatelessWidget {
                       curve: Curves.easeOutCubic,
                       decoration: BoxDecoration(
                         color: txType == 'liya'
-                            ? const Color(0xFF2B1015).withOpacity(0.90)
+                            ? (colors.isDark
+                                ? const Color(0xFF2B1015).withValues(alpha: 0.90)
+                                : colors.redPillBg)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(13),
                         border: Border.all(
                           color: txType == 'liya'
-                              ? denaRed.withOpacity(0.75)
+                              ? colors.redAccent
                               : Colors.transparent,
                           width: 1.2,
                         ),
@@ -1157,16 +1254,16 @@ class EntryBottomDockWidget extends StatelessWidget {
                               Icons.arrow_downward_rounded,
                               size: 16,
                               color: txType == 'liya'
-                                  ? const Color(0xFFFB7185)
-                                  : neutral400,
+                                  ? colors.redText
+                                  : colors.textSecondary,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               "Liya",
                               style: TextStyle(
                                 color: txType == 'liya'
-                                    ? const Color(0xFFFB7185)
-                                    : neutral400,
+                                    ? colors.redText
+                                    : colors.textSecondary,
                                 fontWeight: txType == 'liya'
                                     ? FontWeight.bold
                                     : FontWeight.w600,
@@ -1191,16 +1288,18 @@ class EntryBottomDockWidget extends StatelessWidget {
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.40),
+                    color: colors.isDark
+                        ? Colors.black.withValues(alpha: 0.40)
+                        : colors.surfaceSecondary,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.10)),
+                    border: Border.all(color: colors.border),
                   ),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         "₹",
                         style: TextStyle(
-                          color: lenaGreen,
+                          color: colors.greenAccent,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
@@ -1210,15 +1309,18 @@ class EntryBottomDockWidget extends StatelessWidget {
                         child: TextField(
                           controller: amountCtrl,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: TextStyle(
+                            color: colors.textPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: "Amount",
                             hintStyle: TextStyle(
-                              color: Colors.white38,
+                              color: colors.textMuted,
                               fontSize: 13,
                             ),
                             border: InputBorder.none,
@@ -1235,24 +1337,29 @@ class EntryBottomDockWidget extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
+                    backgroundColor: colors.isDark ? Colors.white : colors.greenAccent,
+                    foregroundColor: colors.isDark ? Colors.black : Colors.white,
                     shape: const StadiumBorder(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     elevation: 0,
                   ),
                   onPressed: onSave,
-                  child: const Row(
+                  child: Row(
                     children: [
                       Text(
                         "Save",
                         style: TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 14,
+                          color: colors.isDark ? Colors.black : Colors.white,
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(Icons.check_rounded, color: Colors.black, size: 18),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.check_rounded,
+                        color: colors.isDark ? Colors.black : Colors.white,
+                        size: 18,
+                      ),
                     ],
                   ),
                 ),
@@ -1264,14 +1371,16 @@ class EntryBottomDockWidget extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.40),
+                    color: colors.isDark
+                        ? Colors.black.withValues(alpha: 0.40)
+                        : colors.surfaceSecondary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.10)),
+                    border: Border.all(color: colors.border),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.close_rounded,
-                      color: Colors.white,
+                      color: colors.textSecondary,
                       size: 20,
                     ),
                   ),

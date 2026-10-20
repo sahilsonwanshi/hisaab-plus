@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -83,12 +84,12 @@ class EntryTopNavHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.isDark
                   ? Colors.black.withValues(alpha: 0.40)
-                  : colors.surfaceSecondary,
+                  : Colors.white.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: colors.isDark
                     ? Colors.white.withValues(alpha: 0.12)
-                    : colors.border,
+                    : Colors.white.withValues(alpha: 0.90),
               ),
             ),
             child: Row(
@@ -98,20 +99,29 @@ class EntryTopNavHeader extends StatelessWidget {
                   onTap: () => onTabSwitch(0),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
                       color: activeTab == 0
-                          ? (colors.isDark ? Colors.white : colors.textPrimary)
+                          ? (colors.isDark ? Colors.white : Colors.white)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: activeTab == 0 && !colors.isDark
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x22000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Text(
                       "Dost",
                       style: TextStyle(
                         color: activeTab == 0
-                            ? (colors.isDark ? Colors.black : Colors.white)
+                            ? (colors.isDark ? Colors.black : const Color(0xFF0F172A))
                             : colors.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -123,18 +133,29 @@ class EntryTopNavHeader extends StatelessWidget {
                   onTap: () => onTabSwitch(1),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: activeTab == 1 ? colors.greenAccent : Colors.transparent,
+                      color: activeTab == 1
+                          ? (colors.isDark ? Colors.white : Colors.white)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: activeTab == 1 && !colors.isDark
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x22000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Text(
                       "Personal",
                       style: TextStyle(
                         color: activeTab == 1
-                            ? (colors.isDark ? Colors.black : Colors.white)
+                            ? (colors.isDark ? Colors.black : const Color(0xFF0F172A))
                             : colors.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -177,9 +198,15 @@ class EntrySearchBarAndFilters extends StatelessWidget {
     Color borderColor;
 
     if (isSelected) {
-      bgColor = colors.isDark ? Colors.white : colors.textPrimary;
-      borderColor = colors.isDark ? Colors.white : colors.textPrimary;
-      textColor = colors.isDark ? Colors.black : Colors.white;
+      bgColor = colors.isDark ? Colors.white : Colors.white;
+      borderColor = colors.isDark ? Colors.white : Colors.white.withValues(alpha: 0.95);
+      textColor = colors.isDark
+          ? Colors.black
+          : (item.type == 'tag'
+              ? colors.blueAccent
+              : (item.type == 'lena'
+                  ? colors.greenText
+                  : (item.type == 'dena' ? colors.redText : const Color(0xFF0F172A))));
     } else if (item.type == 'lena') {
       bgColor = colors.greenPillBg;
       borderColor = colors.greenPillBorder;
@@ -191,16 +218,16 @@ class EntrySearchBarAndFilters extends StatelessWidget {
     } else if (item.type == 'tag') {
       bgColor = colors.isDark
           ? const Color(0xFF0C1929).withValues(alpha: 0.65)
-          : const Color(0xFFE0F2FE);
+          : const Color(0xFFE0F2FE).withValues(alpha: 0.70);
       borderColor = colors.isDark
           ? const Color(0xFF0284C7).withValues(alpha: 0.4)
-          : const Color(0xFFBAE6FD);
+          : const Color(0xFFBAE6FD).withValues(alpha: 0.85);
       textColor = colors.blueAccent;
     } else {
       bgColor = colors.isDark
           ? Colors.black.withValues(alpha: 0.35)
-          : colors.surface;
-      borderColor = colors.border;
+          : Colors.white.withValues(alpha: 0.52);
+      borderColor = colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.75);
       textColor = colors.textSecondary;
     }
 
@@ -213,6 +240,17 @@ class EntrySearchBarAndFilters extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderColor),
+          boxShadow: isSelected
+              ? (colors.isDark
+                  ? []
+                  : const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ])
+              : (!colors.isDark ? [colors.cardShadow] : []),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -242,16 +280,22 @@ class EntrySearchBarAndFilters extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: colors.isDark
-                  ? Colors.black.withValues(alpha: 0.35)
-                  : colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: colors.glassCardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: colors.glassCardBorder,
+                    width: 1.1,
+                  ),
+                  boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                ),
             child: Row(
               children: [
                 Icon(Icons.search_rounded, color: colors.textSecondary, size: 18),
@@ -292,6 +336,8 @@ class EntrySearchBarAndFilters extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -465,19 +511,22 @@ class AddFriendAccordionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? Colors.black.withValues(alpha: 0.35)
-            : colors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colors.isDark
-              ? lenaGreen.withValues(alpha: 0.45)
-              : colors.border,
-        ),
-        boxShadow: colors.isDark ? null : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.glassCardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colors.isDark
+                  ? lenaGreen.withValues(alpha: 0.45)
+                  : colors.glassCardBorder,
+              width: 1.2,
+            ),
+            boxShadow: colors.isDark ? null : [colors.cardShadow],
+          ),
       child: Column(
         children: [
           InkWell(
@@ -780,6 +829,8 @@ class AddFriendAccordionWidget extends StatelessWidget {
           ],
         ],
       ),
+        ),
+      ),
     );
   }
 }
@@ -826,30 +877,32 @@ class SelectableFriendCardWidget extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (colors.isDark
-                    ? const Color(0xFF0F1E16).withValues(alpha: 0.80)
-                    : colors.greenPillBg)
-                : (colors.isDark
-                    ? Colors.black.withValues(alpha: 0.35)
-                    : colors.surface),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isSelected
-                  ? (colors.isDark
-                      ? lenaGreen.withValues(alpha: 0.85)
-                      : colors.greenAccent)
-                  : colors.border,
-              width: isSelected ? 1.2 : 1,
-            ),
-            boxShadow: (!colors.isDark && !isSelected) ? [colors.cardShadow] : null,
-          ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (colors.isDark
+                        ? const Color(0xFF0F1E16).withValues(alpha: 0.80)
+                        : colors.greenPillBg)
+                    : colors.glassTileBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isSelected
+                      ? (colors.isDark
+                          ? lenaGreen.withValues(alpha: 0.85)
+                          : colors.greenAccent)
+                      : colors.glassTileBorder,
+                  width: isSelected ? 1.2 : 1.1,
+                ),
+                boxShadow: (!colors.isDark && !isSelected) ? [colors.cardShadow] : null,
+              ),
           child: Row(
             children: [
               Container(
@@ -958,6 +1011,8 @@ class SelectableFriendCardWidget extends StatelessWidget {
             ],
           ),
         ),
+            ),
+          ),
       ),
     );
   }
@@ -999,17 +1054,23 @@ class EntryBottomDockWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? Colors.black.withValues(alpha: 0.35)
-            : colors.surface,
-        border: Border(
-          top: BorderSide(color: colors.border, width: 1),
-        ),
-        boxShadow: colors.isDark ? null : [colors.cardShadow],
-      ),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          decoration: BoxDecoration(
+            color: colors.isDark
+                ? Colors.black.withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: 0.85),
+            border: Border(
+              top: BorderSide(
+                color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.95),
+                width: 1.2,
+              ),
+            ),
+            boxShadow: colors.isDark ? null : [colors.cardShadow],
+          ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1389,6 +1450,8 @@ class EntryBottomDockWidget extends StatelessWidget {
             ],
           ),
         ],
+      ),
+        ),
       ),
     );
   }

@@ -1,4 +1,4 @@
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -310,19 +310,18 @@ class _HomeScreenState extends State<HomeScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png) - Dark mode only
-          if (colors.isDark)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.42,
-                child: Image.asset(
-                  'assets/images/home_bg.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
+          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png) - Dark & Light Mode
+          Positioned.fill(
+            child: Opacity(
+              opacity: colors.isDark ? 0.42 : 0.76,
+              child: Image.asset(
+                'assets/images/home_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
+          ),
 
           // 2. SOFT AMBIENT GRADIENT OVERLAY
           Positioned.fill(
@@ -338,10 +337,11 @@ class _HomeScreenState extends State<HomeScreen>
                           Colors.black.withValues(alpha: 0.65),
                         ]
                       : [
-                          colors.bg.withValues(alpha: 0.6),
-                          colors.bg,
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.white.withValues(alpha: 0.25),
+                          const Color(0xFFF1F5F9).withValues(alpha: 0.40),
                         ],
-                  stops: const [0.0, 0.40, 1.0],
+                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),
@@ -386,21 +386,24 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       Expanded(
-                        child: Container(
-                          height: 44,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: colors.isDark
-                                ? Colors.black.withValues(alpha: 0.38)
-                                : colors.surface,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: colors.border,
-                            ),
-                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
-                          ),
-                          child: Row(
-                            children: [
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: colors.glassCardBg,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: colors.glassCardBorder,
+                                  width: 1.2,
+                                ),
+                                boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                              ),
+                              child: Row(
+                                children: [
                               Icon(
                                 Icons.search_rounded,
                                 size: 18,
@@ -539,6 +542,8 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ),
+                    ),
+                  ),
                     ],
                   ),
                 ),
@@ -589,26 +594,29 @@ class _HomeScreenState extends State<HomeScreen>
                                 }
                               }
 
-                              return Container(
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  22,
-                                  20,
-                                  20,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colors.isDark
-                                      ? Colors.black.withValues(alpha: 0.38)
-                                      : colors.surface,
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: colors.border,
-                                  ),
-                                  boxShadow: colors.isDark
-                                      ? []
-                                      : [colors.cardShadow],
-                                ),
-                                child: Column(
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(28),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      22,
+                                      20,
+                                      20,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.glassCardBg,
+                                      borderRadius: BorderRadius.circular(28),
+                                      border: Border.all(
+                                        color: colors.glassCardBorder,
+                                        width: 1.2,
+                                      ),
+                                      boxShadow: colors.isDark
+                                          ? []
+                                          : [colors.cardShadow],
+                                    ),
+                                    child: Column(
                                   children: [
                                     Row(
                                       mainAxisAlignment:
@@ -729,12 +737,18 @@ class _HomeScreenState extends State<HomeScreen>
                                               decoration: BoxDecoration(
                                                 color: colors.isDark
                                                     ? Colors.black.withValues(alpha: 0.35)
-                                                    : colors.surfaceSecondary,
+                                                    : Colors.white.withValues(alpha: 0.65),
                                                 borderRadius:
                                                     BorderRadius.circular(26),
                                                 border: Border.all(
-                                                  color: colors.border,
+                                                  color: colors.isDark
+                                                      ? colors.border
+                                                      : Colors.white.withValues(alpha: 0.88),
+                                                  width: 1.1,
                                                 ),
+                                                boxShadow: colors.isDark
+                                                    ? []
+                                                    : [colors.cardShadow],
                                               ),
                                               child: Row(
                                                 mainAxisAlignment:
@@ -770,12 +784,36 @@ class _HomeScreenState extends State<HomeScreen>
                                             child: Container(
                                               height: 48,
                                               decoration: BoxDecoration(
-                                                color: colors.plusButtonBg,
+                                                gradient: colors.isDark
+                                                    ? null
+                                                    : const LinearGradient(
+                                                        begin: Alignment.topLeft,
+                                                        end: Alignment.bottomRight,
+                                                        colors: [
+                                                          Color(0xFF0F172A),
+                                                          Color(0xFF1E293B),
+                                                        ],
+                                                      ),
+                                                color: colors.isDark
+                                                    ? colors.plusButtonBg
+                                                    : null,
                                                 borderRadius:
                                                     BorderRadius.circular(26),
+                                                border: Border.all(
+                                                  color: colors.isDark
+                                                      ? Colors.transparent
+                                                      : Colors.white.withValues(alpha: 0.16),
+                                                  width: 1.0,
+                                                ),
                                                 boxShadow: colors.isDark
                                                     ? []
-                                                    : [colors.cardShadow],
+                                                    : [
+                                                        const BoxShadow(
+                                                          color: Color(0x330F172A),
+                                                          blurRadius: 14,
+                                                          offset: Offset(0, 5),
+                                                        ),
+                                                      ],
                                               ),
                                               child: Row(
                                                 mainAxisAlignment:
@@ -805,8 +843,10 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ],
                                 ),
-                              );
-                            },
+                              ),
+                            ),
+                          );
+                        },
                           ),
 
                           const SizedBox(height: 22),
@@ -907,21 +947,26 @@ class _HomeScreenState extends State<HomeScreen>
                               return Column(
                                 children: [
                                   if (filtered.isEmpty)
-                                    Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 32,
-                                        horizontal: 20,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colors.surface,
-                                        borderRadius: BorderRadius.circular(22),
-                                        border: Border.all(
-                                          color: colors.border,
-                                        ),
-                                        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-                                      ),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(22),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                                        child: Container(
+                                          width: double.infinity,
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 32,
+                                            horizontal: 20,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colors.glassTileBg,
+                                            borderRadius: BorderRadius.circular(22),
+                                            border: Border.all(
+                                              color: colors.glassTileBorder,
+                                              width: 1.1,
+                                            ),
+                                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                                          ),
                                       child: Column(
                                         children: [
                                           Container(
@@ -992,6 +1037,8 @@ class _HomeScreenState extends State<HomeScreen>
                                             ),
                                           ],
                                         ],
+                                      ),
+                                        ),
                                       ),
                                     )
                                   else
@@ -1068,14 +1115,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Date Controller at the Bottom
   Widget _buildBottomDateController(AppColors colors, bool isFutureDisabled) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: colors.isDark ? Colors.black.withValues(alpha: 0.38) : colors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.border),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: colors.glassTileBg,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.glassTileBorder, width: 1.1),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1242,6 +1293,8 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
+        ),
+      ),
     );
   }
 
@@ -1257,14 +1310,18 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
     required VoidCallback onLongPress,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: colors.isDark ? Colors.black.withValues(alpha: 0.35) : colors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.border),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: colors.glassTileBg,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.glassTileBorder, width: 1.1),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1345,6 +1402,8 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

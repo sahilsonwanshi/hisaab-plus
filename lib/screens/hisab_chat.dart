@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -1535,13 +1536,33 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
             children: [
               Positioned.fill(
                 child: Opacity(
-                  opacity: colors.isDark ? 0.25 : 0.05,
+                  opacity: colors.isDark ? 0.28 : 0.70,
                   child: Image.asset(
                     'assets/images/chat_bg.png',
                     fit: BoxFit.cover,
-                    repeat: ImageRepeat.repeat,
                     errorBuilder: (context, error, stackTrace) =>
                         const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: colors.isDark
+                          ? [
+                              Colors.black.withValues(alpha: 0.25),
+                              Colors.black.withValues(alpha: 0.55),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.15),
+                              Colors.white.withValues(alpha: 0.25),
+                              const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                            ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
                   ),
                 ),
               ),
@@ -1683,16 +1704,23 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         horizontal: 16,
                         vertical: 6,
                       ),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOut,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: colors.border),
-                          boxShadow: colors.isDark ? [] : [colors.cardShadow],
-                        ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeInOut,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colors.glassCardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colors.glassCardBorder,
+                                width: 1.2,
+                              ),
+                              boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                            ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1910,6 +1938,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                           ],
                         ),
                       ),
+                        ),
+                      ),
                     ),
 
                     // Chat Statements List
@@ -1953,40 +1983,52 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                         );
                                       }
                                     },
-                                    child: Container(
-                                      width:
-                                          MediaQuery.of(context).size.width *
-                                          0.85,
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: colors.isDark
-                                            ? (isDiya
-                                                    ? const Color(0xFF121415)
-                                                    : surfaceCard)
-                                                .withValues(alpha: 0.88)
-                                            : (isDiya
-                                                    ? colors.greenPillBg
-                                                    : colors.redPillBg),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(16),
-                                          bottomLeft: const Radius.circular(16),
-                                          bottomRight: const Radius.circular(
-                                            16,
-                                          ),
-                                          topRight: isDiya
-                                              ? const Radius.circular(4)
-                                              : const Radius.circular(16),
-                                        ),
-                                        border: Border.all(
-                                          color: colors.isDark
-                                              ? borderCustom
-                                              : (isDiya
-                                                  ? colors.greenPillBorder
-                                                  : colors.redPillBorder),
-                                        ),
-                                        boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(16),
+                                        bottomLeft: const Radius.circular(16),
+                                        bottomRight: const Radius.circular(16),
+                                        topRight: isDiya
+                                            ? const Radius.circular(4)
+                                            : const Radius.circular(16),
                                       ),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                                        child: Container(
+                                          width:
+                                              MediaQuery.of(context).size.width *
+                                              0.85,
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: colors.isDark
+                                                ? (isDiya
+                                                        ? const Color(0xFF121415)
+                                                        : surfaceCard)
+                                                    .withValues(alpha: 0.88)
+                                                : (isDiya
+                                                        ? const Color(0xFFF0FDF4).withValues(alpha: 0.75)
+                                                        : const Color(0xFFFFF1F2).withValues(alpha: 0.75)),
+                                            borderRadius: BorderRadius.only(
+                                              topLeft: const Radius.circular(16),
+                                              bottomLeft: const Radius.circular(16),
+                                              bottomRight: const Radius.circular(
+                                                16,
+                                              ),
+                                              topRight: isDiya
+                                                  ? const Radius.circular(4)
+                                                  : const Radius.circular(16),
+                                            ),
+                                            border: Border.all(
+                                              color: colors.isDark
+                                                  ? borderCustom
+                                                  : (isDiya
+                                                      ? const Color(0xFFA7F3D0).withValues(alpha: 0.85)
+                                                      : const Color(0xFFFECDD3).withValues(alpha: 0.85)),
+                                              width: 1.1,
+                                            ),
+                                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                                          ),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -2135,6 +2177,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                         ],
                                       ),
                                     ),
+                                        ),
+                                      ),
                                   ),
                                 );
                               },
@@ -2203,14 +2247,22 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
   Widget _buildBottomDock(BuildContext context) {
     final colors = context.colors;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? oledBg.withValues(alpha: 0.96)
-            : colors.surface.withValues(alpha: 0.98),
-        border: Border(top: BorderSide(color: colors.border)),
-      ),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          decoration: BoxDecoration(
+            color: colors.isDark
+                ? oledBg.withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.72),
+            border: Border(
+              top: BorderSide(
+                color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.90),
+                width: 1.2,
+              ),
+            ),
+          ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -2218,9 +2270,12 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: colors.surfaceSecondary,
+              color: colors.isDark ? colors.surfaceSecondary : Colors.white.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
+              border: Border.all(
+                color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.85),
+              ),
+              boxShadow: colors.isDark ? [] : [colors.cardShadow],
             ),
             child: Row(
               children: [
@@ -2310,9 +2365,13 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: colors.surfaceSecondary.withValues(alpha: 0.9),
+              color: colors.isDark
+                  ? colors.surfaceSecondary.withValues(alpha: 0.9)
+                  : Colors.white.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.border),
+              border: Border.all(
+                color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.90),
+              ),
             ),
             child: Row(
               children: [
@@ -2427,9 +2486,11 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: colors.surfaceSecondary,
+                    color: colors.isDark ? colors.surfaceSecondary : Colors.white.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: colors.border),
+                    border: Border.all(
+                      color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.90),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -2543,6 +2604,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

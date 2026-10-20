@@ -1,3 +1,4 @@
+import '../theme/app_colors.dart';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -22,7 +23,6 @@ class _BackupScreenState extends State<BackupScreen>
   bool get wantKeepAlive => true;
 
   // Hisaab+ OLED Aesthetics
-  static const Color oledBg = Color(0xFF000000);
   static const Color greenAccent = Color(0xFF00E676);
   static const Color redAccent = Color(0xFFFF5252);
   static const Color blueAccent = Color(0xFF38BDF8);
@@ -603,16 +603,17 @@ class _BackupScreenState extends State<BackupScreen>
     super.build(context);
     final user = DriveSyncService.instance.currentUser;
     final isConnected = user != null;
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: oledBg,
+      backgroundColor: colors.bg,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Ambient Wallpaper Layer
+          // 1. Ambient Wallpaper Layer (Dark & Light Mode)
           Positioned.fill(
             child: Opacity(
-              opacity: 0.35,
+              opacity: colors.isDark ? 0.35 : 0.30,
               child: Image.asset(
                 'assets/images/personal_kharcha_bg.png',
                 fit: BoxFit.cover,
@@ -622,17 +623,24 @@ class _BackupScreenState extends State<BackupScreen>
             ),
           ),
 
-          // 2. Deep OLED Gradient Overlay
+          // 2. Ambient Gradient Overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.38),
-                    Colors.black.withValues(alpha: 0.72),
-                  ],
+                  colors: colors.isDark
+                      ? [
+                          Colors.black.withValues(alpha: 0.38),
+                          Colors.black.withValues(alpha: 0.72),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.40),
+                          Colors.white.withValues(alpha: 0.60),
+                          const Color(0xFFF8FAFC).withValues(alpha: 0.85),
+                        ],
+                  stops: const [0.0, 0.40, 1.0],
                 ),
               ),
             ),

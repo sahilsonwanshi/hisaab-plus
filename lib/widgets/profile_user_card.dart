@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/app_colors.dart';
@@ -25,18 +26,20 @@ class ProfileUserCard extends StatelessWidget {
         ? displayName[0].toUpperCase()
         : "S";
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? Colors.black.withValues(alpha: 0.38)
-            : colors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colors.border,
-          width: 1,
-        ),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.glassCardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colors.glassCardBorder,
+              width: 1.2,
+            ),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -173,6 +176,8 @@ class ProfileUserCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

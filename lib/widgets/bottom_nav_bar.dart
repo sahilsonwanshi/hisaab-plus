@@ -86,8 +86,10 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                         color: colors.navBarBg,
                         borderRadius: BorderRadius.circular(34),
                         border: Border.all(
-                          color: colors.navBarBorder,
-                          width: 1,
+                          color: colors.isDark
+                              ? colors.navBarBorder
+                              : Colors.white.withValues(alpha: 0.95),
+                          width: 1.2,
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -124,13 +126,29 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                     height: 58,
                     width: 58,
                     decoration: BoxDecoration(
-                      color: colors.plusButtonBg,
+                      gradient: colors.isDark
+                          ? null
+                          : const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF0F172A),
+                                Color(0xFF1E293B),
+                              ],
+                            ),
+                      color: colors.isDark ? colors.plusButtonBg : null,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colors.isDark
+                            ? Colors.transparent
+                            : Colors.white.withValues(alpha: 0.18),
+                        width: 1.0,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: colors.isDark ? 0.45 : 0.15,
-                          ),
+                          color: colors.isDark
+                              ? Colors.black.withValues(alpha: 0.45)
+                              : const Color(0x330F172A),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),

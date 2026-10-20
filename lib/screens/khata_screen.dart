@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -197,36 +198,41 @@ class _DostKhataScreenState extends State<DostKhataScreen>
       backgroundColor: colors.bg,
       body: Stack(
         children: [
-          if (colors.isDark) ...[
-            // 1. Spiderman Background Image Layer (Dark Mode Only)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.40,
-                child: Image.asset(
-                  'assets/images/khata_screen_bg.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
+          // 1. Spiderman Background Image Layer (Dark & Light Mode)
+          Positioned.fill(
+            child: Opacity(
+              opacity: colors.isDark ? 0.40 : 0.72,
+              child: Image.asset(
+                'assets/images/khata_screen_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
+          ),
 
-            // 2. Ambient Gradient Tint for Contrast
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.30),
-                      Colors.black.withValues(alpha: 0.65),
-                    ],
-                  ),
+          // 2. Ambient Gradient Tint for Contrast
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: colors.isDark
+                      ? [
+                          Colors.black.withValues(alpha: 0.30),
+                          Colors.black.withValues(alpha: 0.65),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.white.withValues(alpha: 0.25),
+                          const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                        ],
+                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),
-          ],
+          ),
 
           // 3. Main Content
           SafeArea(
@@ -265,18 +271,22 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                         ),
                       ),
                       Expanded(
-                        child: Container(
-                          height: 44,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: colors.isDark
-                                ? Colors.black.withValues(alpha: 0.38)
-                                : colors.surfaceSecondary,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: colors.border,
-                            ),
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: colors.glassCardBg,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: colors.glassCardBorder,
+                                  width: 1.2,
+                                ),
+                                boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                              ),
                           child: Row(
                             children: [
                               Icon(
@@ -317,6 +327,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                 ),
                             ],
                           ),
+                        ),
+                      ),
                         ),
                       ),
                     ],
@@ -449,22 +461,27 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Glassy Net Ledger Card
-                              Container(
-                                padding: const EdgeInsets.fromLTRB(
-                                  18,
-                                  20,
-                                  18,
-                                  18,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colors.surface,
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: colors.border,
-                                  ),
-                                  boxShadow: colors.isDark ? [] : [colors.cardShadow],
-                                ),
-                                child: Column(
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(28),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      18,
+                                      20,
+                                      18,
+                                      18,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.glassCardBg,
+                                      borderRadius: BorderRadius.circular(28),
+                                      border: Border.all(
+                                        color: colors.glassCardBorder,
+                                        width: 1.2,
+                                      ),
+                                      boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                                    ),
+                                    child: Column(
                                   children: [
                                     Row(
                                       children: [
@@ -655,12 +672,12 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                             horizontal: 14,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: colors.surfaceSecondary,
+                                            color: colors.isDark ? colors.surfaceSecondary : Colors.white.withValues(alpha: 0.70),
                                             borderRadius: BorderRadius.circular(
                                               22,
                                             ),
                                             border: Border.all(
-                                              color: colors.border,
+                                              color: colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.90),
                                             ),
                                           ),
                                           child: Row(
@@ -695,9 +712,34 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                               horizontal: 20,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: colors.isDark ? Colors.white : const Color(0xFF0F172A),
+                                              gradient: colors.isDark
+                                                  ? null
+                                                  : const LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                      colors: [
+                                                        Color(0xFF0F172A),
+                                                        Color(0xFF1E293B),
+                                                      ],
+                                                    ),
+                                              color: colors.isDark ? Colors.white : null,
                                               borderRadius:
                                                   BorderRadius.circular(24),
+                                              border: Border.all(
+                                                color: colors.isDark
+                                                    ? Colors.transparent
+                                                    : Colors.white.withValues(alpha: 0.16),
+                                                width: 1.0,
+                                              ),
+                                              boxShadow: colors.isDark
+                                                  ? []
+                                                  : [
+                                                      const BoxShadow(
+                                                        color: Color(0x330F172A),
+                                                        blurRadius: 12,
+                                                        offset: Offset(0, 4),
+                                                      ),
+                                                    ],
                                             ),
                                             child: Row(
                                               children: [
@@ -725,6 +767,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                   ],
                                 ),
                               ),
+                            ),
+                          ),
 
                               const SizedBox(height: 18),
 
@@ -771,11 +815,12 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                         ),
                                         padding: const EdgeInsets.all(24),
                                         decoration: BoxDecoration(
-                                          color: colors.surface,
+                                          color: colors.glassTileBg,
                                           borderRadius:
                                               BorderRadius.circular(20),
                                           border: Border.all(
-                                            color: colors.border,
+                                            color: colors.glassTileBorder,
+                                            width: 1.1,
                                           ),
                                           boxShadow: colors.isDark ? [] : [colors.cardShadow],
                                         ),
@@ -921,8 +966,12 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     required bool isTag,
   }) {
     final bool isSelected = _activeFilter == id;
-    final Color selectedBg = colors.isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color selectedFg = colors.isDark ? Colors.black : Colors.white;
+    final Color selectedBg = colors.isDark ? Colors.white : Colors.white;
+    final Color selectedFg = colors.isDark
+        ? Colors.black
+        : (isTag
+            ? const Color(0xFF0284C7)
+            : (dotColor ?? const Color(0xFF0F172A)));
 
     Color unselectedBg;
     BorderSide unselectedBorder;
@@ -931,17 +980,23 @@ class _DostKhataScreenState extends State<DostKhataScreen>
     if (isTag) {
       unselectedBg = colors.isDark
           ? const Color(0xFF0C1929).withValues(alpha: 0.65)
-          : const Color(0xFFE0F2FE);
+          : const Color(0xFFE0F2FE).withValues(alpha: 0.70);
       unselectedBorder = BorderSide(
         color: colors.isDark
             ? const Color(0xFF0284C7).withValues(alpha: 0.4)
-            : const Color(0xFFBAE6FD),
+            : const Color(0xFFBAE6FD).withValues(alpha: 0.85),
       );
       unselectedFg = colors.isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
     } else {
-      unselectedBg = colors.surfaceSecondary;
-      unselectedBorder = BorderSide(color: colors.border);
-      unselectedFg = colors.textMuted;
+      unselectedBg = colors.isDark
+          ? colors.surfaceSecondary
+          : Colors.white.withValues(alpha: 0.52);
+      unselectedBorder = BorderSide(
+        color: colors.isDark
+            ? colors.border
+            : Colors.white.withValues(alpha: 0.75),
+      );
+      unselectedFg = colors.isDark ? colors.textMuted : colors.textSecondary;
     }
 
     return GestureDetector(
@@ -953,9 +1008,23 @@ class _DostKhataScreenState extends State<DostKhataScreen>
           color: isSelected ? selectedBg : unselectedBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.fromBorderSide(
-            isSelected ? BorderSide(color: selectedBg) : unselectedBorder,
+            isSelected
+                ? (colors.isDark
+                    ? BorderSide(color: selectedBg)
+                    : BorderSide(color: Colors.white.withValues(alpha: 0.95), width: 1.0))
+                : unselectedBorder,
           ),
-          boxShadow: (!isSelected && !colors.isDark) ? [colors.cardShadow] : [],
+          boxShadow: isSelected
+              ? (colors.isDark
+                  ? []
+                  : const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ])
+              : (!colors.isDark ? [colors.cardShadow] : []),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1032,14 +1101,18 @@ class _DostKhataScreenState extends State<DostKhataScreen>
             ? (colors.isDark ? colors.greenAccent : colors.greenText)
             : (colors.isDark ? colors.redAccent : colors.redText));
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.border),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: colors.glassTileBg,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.glassTileBorder, width: 1.1),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1117,6 +1190,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -166,22 +167,25 @@ class PersonalExpenseTimeline extends StatelessWidget {
                     Expanded(
                       child: GestureDetector(
                         onLongPress: () => onDeleteItem(rawKey, item),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 11,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.isDark
-                                ? Colors.black.withValues(alpha: 0.35)
-                                : colors.surface,
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: colors.border,
-                            ),
-                            boxShadow: colors.isDark ? [] : [colors.cardShadow],
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.glassTileBg,
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(
+                                  color: colors.glassTileBorder,
+                                  width: 1.1,
+                                ),
+                                boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                              ),
                           child: Row(
                             children: [
                               Expanded(
@@ -238,6 +242,8 @@ class PersonalExpenseTimeline extends StatelessWidget {
                             ],
                           ),
                         ),
+                            ),
+                          ),
                       ),
                     ),
                   ],

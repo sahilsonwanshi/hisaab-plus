@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
@@ -17,18 +18,20 @@ class _AppInfoCardState extends State<AppInfoCard> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? Colors.black.withValues(alpha: 0.35)
-            : colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.border,
-          width: 1,
-        ),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.glassCardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colors.glassCardBorder,
+              width: 1.2,
+            ),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -228,6 +231,8 @@ class _AppInfoCardState extends State<AppInfoCard> {
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

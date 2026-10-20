@@ -130,16 +130,33 @@ class AppColors {
     redText: Color(0xFFBE123C), // Rose 700
     blueAccent: Color(0xFF0284C7), // Sky 600
     amberAccent: Color(0xFFD97706), // Amber 600
-    navBarBg: Color(0xD9FFFFFF), // 85% translucent white
-    navBarBorder: Color(0xFFCBD5E1), // Slate 300
+    navBarBg: Color(0xA6FFFFFF), // ~65% translucent liquid white
+    navBarBorder: Color(0xC0FFFFFF), // 75% white specular border
     plusButtonBg: Color(0xFF0F172A), // Slate 900
     plusButtonIcon: Color(0xFFFFFFFF),
     cardShadow: BoxShadow(
-      color: Color(0x0F0F172A), // Subtle elevation shadow
-      blurRadius: 10,
-      offset: Offset(0, 3),
+      color: Color(0x18000000), // Clean diffuse iOS shadow
+      blurRadius: 20,
+      offset: Offset(0, 8),
+      spreadRadius: -2,
     ),
   );
+
+  /// iOS Liquid / Frosted Glass card background
+  Color get glassCardBg =>
+      isDark ? Colors.black.withValues(alpha: 0.38) : Colors.white.withValues(alpha: 0.62);
+
+  /// iOS Specular / Frosted Glass card border
+  Color get glassCardBorder =>
+      isDark ? border : Colors.white.withValues(alpha: 0.78);
+
+  /// iOS Frosted Glass list tile background
+  Color get glassTileBg =>
+      isDark ? Colors.black.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.58);
+
+  /// iOS Frosted Glass list tile border
+  Color get glassTileBorder =>
+      isDark ? border : Colors.white.withValues(alpha: 0.72);
 
   /// Resolves the current theme tokens based on BuildContext
   static AppColors of(BuildContext context) {

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -26,19 +27,21 @@ class ProfileCompactStats extends StatelessWidget {
     final colors = context.colors;
     final bool isNetPositive = netBalance >= 0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.isDark
-            ? Colors.black.withValues(alpha: 0.38)
-            : colors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colors.border,
-          width: 1,
-        ),
-        boxShadow: colors.isDark ? [] : [colors.cardShadow],
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: colors.glassCardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colors.glassCardBorder,
+              width: 1.2,
+            ),
+            boxShadow: colors.isDark ? [] : [colors.cardShadow],
+          ),
       child: Row(
         children: [
           // 1. Lena Hai
@@ -48,7 +51,7 @@ class ProfileCompactStats extends StatelessWidget {
               label: "LENA HAI",
               amount: "+₹$totalLena",
               count: "$lenaCount log",
-              color: colors.greenAccent,
+              color: colors.isDark ? colors.greenAccent : colors.greenText,
             ),
           ),
 
@@ -61,7 +64,7 @@ class ProfileCompactStats extends StatelessWidget {
               label: "DENA HAI",
               amount: "-₹$totalDena",
               count: "$denaCount log",
-              color: colors.redAccent,
+              color: colors.isDark ? colors.redAccent : colors.redText,
             ),
           ),
 
@@ -74,10 +77,12 @@ class ProfileCompactStats extends StatelessWidget {
               label: "NET BALANCE",
               amount: "${isNetPositive ? '+₹' : '-₹'}${netBalance.abs()}",
               count: isNetPositive ? "Favour Me" : "Dena Baaki",
-              color: isNetPositive ? colors.greenAccent : colors.redAccent,
+              color: isNetPositive ? (colors.isDark ? colors.greenAccent : colors.greenText) : (colors.isDark ? colors.redAccent : colors.redText),
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

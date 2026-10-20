@@ -191,19 +191,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Fullscreen Wallpaper
-          if (colors.isDark)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.38,
-                child: Image.asset(
-                  'assets/images/profile_bg.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
+          // 1. Fullscreen Wallpaper (Dark & Light Mode)
+          Positioned.fill(
+            child: Opacity(
+              opacity: colors.isDark ? 0.38 : 0.76,
+              child: Image.asset(
+                'assets/images/profile_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
+          ),
 
           // 2. Soft Ambient Gradient
           Positioned.fill(
@@ -218,9 +217,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                           Colors.black.withValues(alpha: 0.65),
                         ]
                       : [
-                          colors.bg.withValues(alpha: 0.6),
-                          colors.bg,
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.white.withValues(alpha: 0.25),
+                          const Color(0xFFF1F5F9).withValues(alpha: 0.40),
                         ],
+                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),

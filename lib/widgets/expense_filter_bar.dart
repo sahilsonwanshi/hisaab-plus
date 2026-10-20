@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -35,19 +36,21 @@ class ExpenseFilterBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. DATE FILTER SEGMENT BAR
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: colors.isDark
-                ? Colors.black.withValues(alpha: 0.38)
-                : colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: colors.border,
-              width: 1,
-            ),
-            boxShadow: colors.isDark ? [] : [colors.cardShadow],
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: colors.glassCardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colors.glassCardBorder,
+                  width: 1.2,
+                ),
+                boxShadow: colors.isDark ? [] : [colors.cardShadow],
+              ),
           child: Row(
             children: [
               // 1. Sabhi Din
@@ -89,6 +92,8 @@ class ExpenseFilterBar extends StatelessWidget {
               ),
             ],
           ),
+            ),
+          ),
         ),
 
         // 2. CATEGORY FILTER CAPSULES
@@ -125,19 +130,28 @@ class ExpenseFilterBar extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isSel
-                            ? (colors.isDark ? Colors.white : colors.greenAccent)
+                            ? (colors.isDark ? Colors.white : Colors.white)
                             : (colors.isDark
                                 ? Colors.black.withValues(alpha: 0.35)
-                                : colors.surface),
+                                : Colors.white.withValues(alpha: 0.52)),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSel
-                              ? (colors.isDark ? Colors.white : colors.greenAccent)
-                              : colors.border,
+                              ? (colors.isDark ? Colors.white : Colors.white.withValues(alpha: 0.95))
+                              : (colors.isDark ? colors.border : Colors.white.withValues(alpha: 0.75)),
+                          width: 1.0,
                         ),
-                        boxShadow: (!isSel && !colors.isDark)
-                            ? [colors.cardShadow]
-                            : [],
+                        boxShadow: isSel
+                            ? (colors.isDark
+                                ? []
+                                : const [
+                                    BoxShadow(
+                                      color: Color(0x22000000),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ])
+                            : (!colors.isDark ? [colors.cardShadow] : []),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -147,7 +161,7 @@ class ExpenseFilterBar extends StatelessWidget {
                               width: 6,
                               height: 6,
                               decoration: BoxDecoration(
-                                color: colors.isDark ? Colors.black : Colors.white,
+                                color: colors.isDark ? Colors.black : const Color(0xFF0F172A),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -157,7 +171,7 @@ class ExpenseFilterBar extends StatelessWidget {
                             cat,
                             style: TextStyle(
                               color: isSel
-                                  ? (colors.isDark ? Colors.black : Colors.white)
+                                  ? (colors.isDark ? Colors.black : const Color(0xFF0F172A))
                                   : colors.textSecondary,
                               fontSize: 11.5,
                               fontWeight:
@@ -171,7 +185,7 @@ class ExpenseFilterBar extends StatelessWidget {
                               color: isSel
                                   ? (colors.isDark
                                       ? Colors.black87
-                                      : Colors.white70)
+                                      : const Color(0xFF475569))
                                   : colors.textMuted,
                               fontSize: 11.5,
                               fontWeight: FontWeight.bold,

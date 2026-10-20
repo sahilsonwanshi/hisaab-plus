@@ -643,36 +643,41 @@ class _EntryFormViewState extends State<EntryFormView>
     final colors = context.colors;
     return Stack(
       children: [
-        if (colors.isDark) ...[
-          // 1. Street Lamp Rainy BG Image (45% Opacity)
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.45,
-              child: Image.asset(
-                'assets/images/friends_select_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
-              ),
+        // 1. Street Lamp Rainy BG Image (Dark & Light Mode)
+        Positioned.fill(
+          child: Opacity(
+            opacity: colors.isDark ? 0.45 : 0.75,
+            child: Image.asset(
+              'assets/images/friends_select_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const SizedBox.shrink(),
             ),
           ),
+        ),
 
-          // 2. Soft Dark Ambient Gradient
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.25),
-                    Colors.black.withValues(alpha: 0.60),
-                  ],
-                ),
+        // 2. Soft Ambient Gradient
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: colors.isDark
+                    ? [
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.60),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.15),
+                        Colors.white.withValues(alpha: 0.25),
+                        const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                      ],
+                stops: const [0.0, 0.45, 1.0],
               ),
             ),
           ),
-        ],
+        ),
 
         // 3. Main Dost Content
         ValueListenableBuilder<Box<FriendModel>>(
@@ -912,33 +917,38 @@ class _EntryFormViewState extends State<EntryFormView>
     final colors = context.colors;
     return Stack(
       children: [
-        if (colors.isDark) ...[
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.55,
-              child: Image.asset(
-                'assets/images/personal_kharcha_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+        Positioned.fill(
+          child: Opacity(
+            opacity: colors.isDark ? 0.55 : 0.75,
+            child: Image.asset(
+              'assets/images/personal_kharcha_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: colors.isDark
+                    ? [
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.50),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.15),
+                        Colors.white.withValues(alpha: 0.25),
+                        const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                      ],
+                stops: const [0.0, 0.45, 1.0],
               ),
             ),
           ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.25),
-                    Colors.black.withValues(alpha: 0.50),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
         Column(
           children: [
             Expanded(
@@ -999,21 +1009,24 @@ class _EntryFormViewState extends State<EntryFormView>
                     ),
                     children: [
                       // TOP CARD: AMOUNT ON THE RIGHT SIDE OF THE TEXT
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.isDark
-                              ? Colors.black.withValues(alpha: 0.38)
-                              : colors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: colors.border,
-                          ),
-                          boxShadow: colors.isDark ? null : [colors.cardShadow],
-                        ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.glassCardBg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: colors.glassCardBorder,
+                                width: 1.2,
+                              ),
+                              boxShadow: colors.isDark ? [] : [colors.cardShadow],
+                            ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1036,6 +1049,8 @@ class _EntryFormViewState extends State<EntryFormView>
                               ),
                             ),
                           ],
+                        ),
+                          ),
                         ),
                       ),
 

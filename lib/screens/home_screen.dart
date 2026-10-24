@@ -310,18 +310,19 @@ class _HomeScreenState extends State<HomeScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png) - Dark & Light Mode
-          Positioned.fill(
-            child: Opacity(
-              opacity: colors.isDark ? 0.42 : 0.76,
-              child: Image.asset(
-                'assets/images/home_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+          // 1. PINNED FULLSCREEN WALLPAPER (home_bg.png) - Dark Mode Only
+          if (colors.isDark)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.42,
+                child: Image.asset(
+                  'assets/images/home_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
           // 2. SOFT AMBIENT GRADIENT OVERLAY
           Positioned.fill(
@@ -336,12 +337,11 @@ class _HomeScreenState extends State<HomeScreen>
                           Colors.black.withValues(alpha: 0.20),
                           Colors.black.withValues(alpha: 0.65),
                         ]
-                      : [
-                          Colors.white.withValues(alpha: 0.15),
-                          Colors.white.withValues(alpha: 0.25),
-                          const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                      : const [
+                          Color(0xFFF8FAFC),
+                          Color(0xFFF1F5F9),
                         ],
-                  stops: const [0.0, 0.45, 1.0],
+                  stops: colors.isDark ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
                 ),
               ),
             ),
@@ -737,13 +737,11 @@ class _HomeScreenState extends State<HomeScreen>
                                               decoration: BoxDecoration(
                                                 color: colors.isDark
                                                     ? Colors.black.withValues(alpha: 0.35)
-                                                    : Colors.white.withValues(alpha: 0.65),
+                                                    : colors.surfaceSecondary,
                                                 borderRadius:
                                                     BorderRadius.circular(26),
                                                 border: Border.all(
-                                                  color: colors.isDark
-                                                      ? colors.border
-                                                      : Colors.white.withValues(alpha: 0.88),
+                                                  color: colors.border,
                                                   width: 1.1,
                                                 ),
                                                 boxShadow: colors.isDark
@@ -763,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                           FontWeight.w700,
                                                     ),
                                                   ),
-                                                  SizedBox(width: 5),
+                                                  const SizedBox(width: 5),
                                                   Icon(
                                                     Icons.arrow_outward_rounded,
                                                     size: 14,
@@ -790,8 +788,8 @@ class _HomeScreenState extends State<HomeScreen>
                                                         begin: Alignment.topLeft,
                                                         end: Alignment.bottomRight,
                                                         colors: [
-                                                          Color(0xFF0F172A),
-                                                          Color(0xFF1E293B),
+                                                          Color(0xFF059669),
+                                                          Color(0xFF047857),
                                                         ],
                                                       ),
                                                 color: colors.isDark
@@ -802,14 +800,14 @@ class _HomeScreenState extends State<HomeScreen>
                                                 border: Border.all(
                                                   color: colors.isDark
                                                       ? Colors.transparent
-                                                      : Colors.white.withValues(alpha: 0.16),
+                                                      : const Color(0xFF34D399).withValues(alpha: 0.3),
                                                   width: 1.0,
                                                 ),
                                                 boxShadow: colors.isDark
                                                     ? []
                                                     : [
                                                         const BoxShadow(
-                                                          color: Color(0x330F172A),
+                                                          color: Color(0x3D059669),
                                                           blurRadius: 14,
                                                           offset: Offset(0, 5),
                                                         ),

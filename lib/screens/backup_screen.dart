@@ -610,18 +610,19 @@ class _BackupScreenState extends State<BackupScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Ambient Wallpaper Layer (Dark & Light Mode)
-          Positioned.fill(
-            child: Opacity(
-              opacity: colors.isDark ? 0.35 : 0.30,
-              child: Image.asset(
-                'assets/images/personal_kharcha_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+          // 1. Ambient Wallpaper Layer (Dark Mode Only)
+          if (colors.isDark)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.35,
+                child: Image.asset(
+                  'assets/images/personal_kharcha_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
           // 2. Ambient Gradient Overlay
           Positioned.fill(
@@ -635,12 +636,11 @@ class _BackupScreenState extends State<BackupScreen>
                           Colors.black.withValues(alpha: 0.38),
                           Colors.black.withValues(alpha: 0.72),
                         ]
-                      : [
-                          Colors.white.withValues(alpha: 0.40),
-                          Colors.white.withValues(alpha: 0.60),
-                          const Color(0xFFF8FAFC).withValues(alpha: 0.85),
+                      : const [
+                          Color(0xFFF8FAFC),
+                          Color(0xFFF1F5F9),
                         ],
-                  stops: const [0.0, 0.40, 1.0],
+                  stops: colors.isDark ? const [0.0, 0.40, 1.0] : const [0.0, 1.0],
                 ),
               ),
             ),

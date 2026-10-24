@@ -23,10 +23,12 @@ class LocalStorageBackupService {
     final file = File('${tempDir.path}/$fileName');
     await file.writeAsString(jsonString);
 
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      text: 'Hisaab+ Backup Data ($fileName)',
-      subject: 'Hisaab+ Offline Backup',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Hisaab+ Backup Data ($fileName)',
+        subject: 'Hisaab+ Offline Backup',
+      ),
     );
 
     return file.path;

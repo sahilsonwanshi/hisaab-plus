@@ -22,7 +22,7 @@ void main() {
       expect(light.bg, const Color(0xFFF8FAFC));
       expect(light.textPrimary, const Color(0xFF0F172A));
       expect(light.surface, const Color(0xFFFFFFFF));
-      expect(light.plusButtonBg, const Color(0xFF0F172A));
+      expect(light.plusButtonBg, const Color(0xFF059669));
       expect(light.plusButtonIcon, const Color(0xFFFFFFFF));
     });
 

@@ -12,6 +12,7 @@ import '../services/hisaab_entry_service.dart';
 import '../widgets/custom_toast.dart';
 import '../widgets/entry_form_widgets.dart';
 import '../widgets/expense_filter_bar.dart';
+import '../widgets/whatsapp_receipt_sheet.dart';
 import '../theme/app_colors.dart';
 
 class EntryFormView extends StatefulWidget {
@@ -306,7 +307,7 @@ class _EntryFormViewState extends State<EntryFormView>
     );
   }
 
-  void _handleSaveSingleFriendHisaab() {
+  Future<void> _handleSaveSingleFriendHisaab() async {
     final int amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
       AppToast.show(
@@ -327,17 +328,23 @@ class _EntryFormViewState extends State<EntryFormView>
     }
 
     final noteText = _noteCtrl.text.trim();
+    final friendKey = _stateData.selectedFriendKey;
+    final txType = _stateData.txType;
+    final FriendModel? friend =
+        friendKey != null ? _friendsBox.get(friendKey) : null;
 
-    _entryService.saveSingleFriendTransaction(
-      friendKey: _stateData.selectedFriendKey,
+    await _entryService.saveSingleFriendTransaction(
+      friendKey: friendKey,
       amount: amount,
-      txType: _stateData.txType,
+      txType: txType,
       note: noteText,
       paymentMode: _stateData.selectedPaymentMode,
     );
 
     _amountCtrl.clear();
     _noteCtrl.clear();
+
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
 
     AppToast.show(
@@ -345,7 +352,20 @@ class _EntryFormViewState extends State<EntryFormView>
       title: "₹$amount ka hisaab safalta se jod diya gaya!",
       type: ToastType.success,
     );
-    widget.onClose();
+
+    if (friend != null && mounted) {
+      await WhatsAppReceiptSheet.show(
+        context: context,
+        friend: friend,
+        amount: amount,
+        txType: txType,
+        note: noteText,
+      );
+    }
+
+    if (mounted) {
+      widget.onClose();
+    }
   }
 
   void _handleSavePersonalKharcha() {
@@ -643,18 +663,19 @@ class _EntryFormViewState extends State<EntryFormView>
     final colors = context.colors;
     return Stack(
       children: [
-        // 1. Street Lamp Rainy BG Image (Dark & Light Mode)
-        Positioned.fill(
-          child: Opacity(
-            opacity: colors.isDark ? 0.45 : 0.75,
-            child: Image.asset(
-              'assets/images/friends_select_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
+        // 1. Street Lamp Rainy BG Image (Dark Mode Only)
+        if (colors.isDark)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.45,
+              child: Image.asset(
+                'assets/images/friends_select_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
+              ),
             ),
           ),
-        ),
 
         // 2. Soft Ambient Gradient
         Positioned.fill(
@@ -668,12 +689,11 @@ class _EntryFormViewState extends State<EntryFormView>
                         Colors.black.withValues(alpha: 0.25),
                         Colors.black.withValues(alpha: 0.60),
                       ]
-                    : [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.25),
-                        const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                    : const [
+                        Color(0xFFF8FAFC),
+                        Color(0xFFF1F5F9),
                       ],
-                stops: const [0.0, 0.45, 1.0],
+                stops: colors.isDark ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
               ),
             ),
           ),
@@ -917,17 +937,18 @@ class _EntryFormViewState extends State<EntryFormView>
     final colors = context.colors;
     return Stack(
       children: [
-        Positioned.fill(
-          child: Opacity(
-            opacity: colors.isDark ? 0.55 : 0.75,
-            child: Image.asset(
-              'assets/images/personal_kharcha_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
+        if (colors.isDark)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.55,
+              child: Image.asset(
+                'assets/images/personal_kharcha_bg.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
+              ),
             ),
           ),
-        ),
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -939,12 +960,11 @@ class _EntryFormViewState extends State<EntryFormView>
                         Colors.black.withValues(alpha: 0.25),
                         Colors.black.withValues(alpha: 0.50),
                       ]
-                    : [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.25),
-                        const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                    : const [
+                        Color(0xFFF8FAFC),
+                        Color(0xFFF1F5F9),
                       ],
-                stops: const [0.0, 0.45, 1.0],
+                stops: colors.isDark ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
               ),
             ),
           ),

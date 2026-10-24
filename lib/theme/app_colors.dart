@@ -130,33 +130,33 @@ class AppColors {
     redText: Color(0xFFBE123C), // Rose 700
     blueAccent: Color(0xFF0284C7), // Sky 600
     amberAccent: Color(0xFFD97706), // Amber 600
-    navBarBg: Color(0xA6FFFFFF), // ~65% translucent liquid white
-    navBarBorder: Color(0xC0FFFFFF), // 75% white specular border
-    plusButtonBg: Color(0xFF0F172A), // Slate 900
+    navBarBg: Color(0xFFFFFFFF), // Crisp clean floating white capsule
+    navBarBorder: Color(0xFFE2E8F0), // Subtle slate border
+    plusButtonBg: Color(0xFF059669), // Brand Emerald Green
     plusButtonIcon: Color(0xFFFFFFFF),
     cardShadow: BoxShadow(
-      color: Color(0x18000000), // Clean diffuse iOS shadow
-      blurRadius: 20,
-      offset: Offset(0, 8),
-      spreadRadius: -2,
+      color: Color(0x0C0F172A), // Clean soft diffuse slate shadow
+      blurRadius: 16,
+      offset: Offset(0, 4),
+      spreadRadius: 0,
     ),
   );
 
-  /// iOS Liquid / Frosted Glass card background
+  /// Card background (OLED frosted dark, crisp pure white in light mode)
   Color get glassCardBg =>
-      isDark ? Colors.black.withValues(alpha: 0.38) : Colors.white.withValues(alpha: 0.62);
+      isDark ? Colors.black.withValues(alpha: 0.38) : Colors.white;
 
-  /// iOS Specular / Frosted Glass card border
+  /// Card border (OLED subtle border, crisp slate border in light mode)
   Color get glassCardBorder =>
-      isDark ? border : Colors.white.withValues(alpha: 0.78);
+      isDark ? border : const Color(0xFFE2E8F0);
 
-  /// iOS Frosted Glass list tile background
+  /// List tile background (OLED frosted dark, crisp pure white in light mode)
   Color get glassTileBg =>
-      isDark ? Colors.black.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.58);
+      isDark ? Colors.black.withValues(alpha: 0.35) : Colors.white;
 
-  /// iOS Frosted Glass list tile border
+  /// List tile border (OLED subtle border, crisp slate border in light mode)
   Color get glassTileBorder =>
-      isDark ? border : Colors.white.withValues(alpha: 0.72);
+      isDark ? border : const Color(0xFFE2E8F0);
 
   /// Resolves the current theme tokens based on BuildContext
   static AppColors of(BuildContext context) {

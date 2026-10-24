@@ -198,18 +198,19 @@ class _DostKhataScreenState extends State<DostKhataScreen>
       backgroundColor: colors.bg,
       body: Stack(
         children: [
-          // 1. Spiderman Background Image Layer (Dark & Light Mode)
-          Positioned.fill(
-            child: Opacity(
-              opacity: colors.isDark ? 0.40 : 0.72,
-              child: Image.asset(
-                'assets/images/khata_screen_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const SizedBox.shrink(),
+          // 1. Spiderman Background Image Layer (Dark Mode Only)
+          if (colors.isDark)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.40,
+                child: Image.asset(
+                  'assets/images/khata_screen_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
           // 2. Ambient Gradient Tint for Contrast
           Positioned.fill(
@@ -223,12 +224,11 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                           Colors.black.withValues(alpha: 0.30),
                           Colors.black.withValues(alpha: 0.65),
                         ]
-                      : [
-                          Colors.white.withValues(alpha: 0.15),
-                          Colors.white.withValues(alpha: 0.25),
-                          const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                      : const [
+                          Color(0xFFF8FAFC),
+                          Color(0xFFF1F5F9),
                         ],
-                  stops: const [0.0, 0.45, 1.0],
+                  stops: colors.isDark ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
                 ),
               ),
             ),
@@ -718,8 +718,8 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                                       begin: Alignment.topLeft,
                                                       end: Alignment.bottomRight,
                                                       colors: [
-                                                        Color(0xFF0F172A),
-                                                        Color(0xFF1E293B),
+                                                        Color(0xFF059669),
+                                                        Color(0xFF047857),
                                                       ],
                                                     ),
                                               color: colors.isDark ? Colors.white : null,
@@ -728,16 +728,16 @@ class _DostKhataScreenState extends State<DostKhataScreen>
                                               border: Border.all(
                                                 color: colors.isDark
                                                     ? Colors.transparent
-                                                    : Colors.white.withValues(alpha: 0.16),
+                                                    : const Color(0xFF34D399).withValues(alpha: 0.3),
                                                 width: 1.0,
                                               ),
                                               boxShadow: colors.isDark
                                                   ? []
                                                   : [
                                                       const BoxShadow(
-                                                        color: Color(0x330F172A),
-                                                        blurRadius: 12,
-                                                        offset: Offset(0, 4),
+                                                        color: Color(0x3D059669),
+                                                        blurRadius: 14,
+                                                        offset: Offset(0, 5),
                                                       ),
                                                     ],
                                             ),

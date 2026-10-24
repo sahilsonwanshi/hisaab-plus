@@ -11,6 +11,7 @@ import '../models/transaction_model.dart';
 import '../services/hisaab_entry_service.dart';
 import '../services/pdf_statement_service.dart';
 import '../widgets/custom_toast.dart';
+import '../widgets/whatsapp_receipt_sheet.dart';
 import '../theme/app_colors.dart';
 
 class HisabChatScreen extends StatefulWidget {
@@ -1439,6 +1440,43 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
+
+                    // Send WhatsApp Receipt Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF059669),
+                          side: const BorderSide(
+                            color: Color(0xFF059669),
+                            width: 1.3,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.send_rounded, size: 16),
+                        label: const Text(
+                          "WhatsApp Receipt Bhejein",
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(modalCtx);
+                          WhatsAppReceiptSheet.show(
+                            context: context,
+                            friend: friend,
+                            amount: currentAmount,
+                            txType: currentType,
+                            note: currentTitle,
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1449,7 +1487,7 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
     );
   }
 
-  void _addNewEntry() {
+  Future<void> _addNewEntry() async {
     final amount = int.tryParse(_amountController.text.trim()) ?? 0;
     if (amount <= 0) {
       AppToast.show(context, title: "Amount daalein!", type: ToastType.warning);
@@ -1464,11 +1502,13 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
     final targetFriendKey =
         widget.friendKey ?? _resolveFriend(_friendsBox)?.key;
 
+    final txType = _entryType == 0 ? 'diya' : 'liya';
+
     if (targetFriendKey != null) {
-      _entryService.saveSingleFriendTransaction(
+      await _entryService.saveSingleFriendTransaction(
         friendKey: targetFriendKey,
         amount: amount,
-        txType: _entryType == 0 ? 'diya' : 'liya',
+        txType: txType,
         note: noteText,
         paymentMode: _selectedPaymentMode,
       );
@@ -1476,6 +1516,8 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
 
     _amountController.clear();
     _noteController.clear();
+
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1493,6 +1535,17 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
       title: "Entry save ho gayi!",
       type: ToastType.success,
     );
+
+    final currentFriend = _resolveFriend(_friendsBox);
+    if (currentFriend != null && mounted) {
+      await WhatsAppReceiptSheet.show(
+        context: context,
+        friend: currentFriend,
+        amount: amount,
+        txType: txType,
+        note: noteText,
+      );
+    }
   }
 
   void _closeChatPage() {
@@ -1534,17 +1587,18 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
           backgroundColor: colors.bg,
           body: Stack(
             children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: colors.isDark ? 0.28 : 0.70,
-                  child: Image.asset(
-                    'assets/images/chat_bg.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const SizedBox.shrink(),
+              if (colors.isDark)
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.28,
+                    child: Image.asset(
+                      'assets/images/chat_bg.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
+                    ),
                   ),
                 ),
-              ),
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -1556,12 +1610,11 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                               Colors.black.withValues(alpha: 0.25),
                               Colors.black.withValues(alpha: 0.55),
                             ]
-                          : [
-                              Colors.white.withValues(alpha: 0.15),
-                              Colors.white.withValues(alpha: 0.25),
-                              const Color(0xFFF1F5F9).withValues(alpha: 0.40),
+                          : const [
+                              Color(0xFFF8FAFC),
+                              Color(0xFFF1F5F9),
                             ],
-                      stops: const [0.0, 0.45, 1.0],
+                      stops: colors.isDark ? const [0.0, 0.45, 1.0] : const [0.0, 1.0],
                     ),
                   ),
                 ),
@@ -2146,6 +2199,45 @@ class _HisabChatScreenState extends State<HisabChatScreen> {
                                                       fontSize: 9.5,
                                                       fontWeight:
                                                           FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  InkWell(
+                                                    onTap: () {
+                                                      if (currentFriend != null) {
+                                                        WhatsAppReceiptSheet.show(
+                                                          context: context,
+                                                          friend: currentFriend,
+                                                          amount: (msg["amount"] as num?)?.toInt() ?? 0,
+                                                          txType: msg["type"] ?? 'diya',
+                                                          note: msg["title"] ?? '',
+                                                        );
+                                                      }
+                                                    },
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.send_rounded,
+                                                          size: 10.5,
+                                                          color: colors.isDark
+                                                              ? colors.greenAccent
+                                                              : colors.greenText,
+                                                        ),
+                                                        const SizedBox(width: 3),
+                                                        Text(
+                                                          "Receipt",
+                                                          style: TextStyle(
+                                                            color: colors.isDark
+                                                                ? colors.greenAccent
+                                                                : colors.greenText,
+                                                            fontSize: 9.5,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
                                                 ],

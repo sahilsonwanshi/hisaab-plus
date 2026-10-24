@@ -88,14 +88,14 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                         border: Border.all(
                           color: colors.isDark
                               ? colors.navBarBorder
-                              : Colors.white.withValues(alpha: 0.95),
+                              : const Color(0xFFE2E8F0),
                           width: 1.2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: colors.isDark ? 0.40 : 0.08,
-                            ),
+                            color: colors.isDark
+                                ? Colors.black.withValues(alpha: 0.40)
+                                : const Color(0x0C0F172A),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -132,8 +132,8 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                Color(0xFF0F172A),
-                                Color(0xFF1E293B),
+                                Color(0xFF059669),
+                                Color(0xFF047857),
                               ],
                             ),
                       color: colors.isDark ? colors.plusButtonBg : null,
@@ -141,14 +141,14 @@ class _FloatingOledNavBarState extends State<FloatingOledNavBar>
                       border: Border.all(
                         color: colors.isDark
                             ? Colors.transparent
-                            : Colors.white.withValues(alpha: 0.18),
+                            : const Color(0xFF34D399).withValues(alpha: 0.35),
                         width: 1.0,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: colors.isDark
                               ? Colors.black.withValues(alpha: 0.45)
-                              : const Color(0x330F172A),
+                              : const Color(0x3D059669),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
